@@ -2,7 +2,8 @@ nfl model
 ================
 chad allison \| 1 december 2022
 
-predictive model for nfl games
+predictive model for nfl games - *work in progress, not even close to
+done*
 
 ------------------------------------------------------------------------
 
@@ -18,7 +19,7 @@ theme_set(theme_classic())
 ```
 
 ``` r
-start_season = 2018
+start_season = 2022
 write_csv(load_pbp(seasons = start_season:2022), "pbp_data.csv")
 df = read_csv("pbp_data.csv", col_types = cols())
 ```
@@ -31,7 +32,7 @@ unique_games = df |>
 paste("number of regular season games in data:", nrow(unique_games))
 ```
 
-    ## [1] "number of regular season games in data: 1248"
+    ## [1] "number of regular season games in data: 209"
 
 ``` r
 ypg_by_team = df |>
@@ -213,3 +214,80 @@ wl_df |>
 ```
 
 ![](nfl_model_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
+xyz = game_results |>
+  left_join(ypg_by_team, by = c("home_team" = "posteam")) |>
+  select(-season) |>
+  rename(home_ypg = ypg) |>
+  left_join(ypg_by_team, by = c("away_team" = "posteam")) |>
+  select(-season) |>
+  rename(away_ypg = ypg) |>
+  filter(win_team != "tie") |>
+  mutate(home_win = ifelse(win_team == "home", 1, 0))
+
+matchup = data.frame(home_team = "CHI", away_team = "PHI")
+
+# matchup |>
+#   left_join(ypg_by_team, by = c("home_team" = "posteam")) |>
+#   select(-season) |>
+#   rename(home_ypg = ypg) |>
+#   left_join(ypg_by_team, by = c("away_team" = "posteam")) |>
+#   select(-season) |>
+#   rename(away_ypg = ypg)
+
+win_mod = glm(home_win ~ home_ypg + away_ypg, data = xyz, family = "binomial")
+
+predict_winner = function(home, away) {
+  
+  matchup = data.frame(home_team = home, away_team = away)
+  
+  matchup = matchup |>
+    left_join(ypg_by_team, by = c("home_team" = "posteam")) |>
+    select(-season) |>
+    rename(home_ypg = ypg) |>
+    left_join(ypg_by_team, by = c("away_team" = "posteam")) |>
+    select(-season) |>
+    rename(away_ypg = ypg)
+  
+  home_win_prob = predict(win_mod, matchup, type = "response")
+  winner = ifelse(home_win_prob >= 0.5, home, away)
+  loser = ifelse(home_win_prob >= 0.5, away, home)
+  paste(winner, "will defeat", loser)
+  
+}
+
+predict_winner("CHI", "PHI")
+```
+
+    ## [1] "PHI will defeat CHI"
+
+``` r
+predict_winner("MIN", "IND")
+```
+
+    ## [1] "MIN will defeat IND"
+
+``` r
+predict_winner("CLE", "BAL")
+```
+
+    ## [1] "CLE will defeat BAL"
+
+``` r
+predict_winner("BUF", "MIA")
+```
+
+    ## [1] "BUF will defeat MIA"
+
+``` r
+predict_winner("NYJ", "DET")
+```
+
+    ## [1] "DET will defeat NYJ"
+
+``` r
+predict_winner("CAR", "PIT")
+```
+
+    ## [1] "PIT will defeat CAR"
