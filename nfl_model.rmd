@@ -187,7 +187,11 @@ wl_df |>
   mutate(win_prop = round(wins / (wins + losses + ties), 3)) |>
   left_join(team_ypg, by = "team") |>
   ggplot(aes(ypg, win_prop)) +
-  geom_point(aes(col = team), size = 5) +
+  geom_point(aes(col = team), size = 3) +
+  ggrepel::geom_text_repel(aes(x = ypg, 
+                      y = win_prop, 
+                      label = team),
+                      size = 3) +
   scale_color_manual(values = c(
     "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
     "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
@@ -195,7 +199,9 @@ wl_df |>
     "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
     "#BB0000", "#DA0000", "#003472", "#690A00")) +
   labs(x = "yards per game", y = "win percentage", col = NULL,
-       title = paste("relationship between yards per game and win percentage since", start_season))
+       title = paste("relationship between yards per game and win percentage since", start_season)) +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
 ```
 
 
