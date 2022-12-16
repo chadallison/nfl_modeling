@@ -21,7 +21,7 @@ theme_set(theme_classic())
 
 ```{r message = F, warning = F}
 start_season = 2022
-write_csv(load_pbp(seasons = start_season:2022), "pbp_data.csv")
+# write_csv(load_pbp(seasons = start_season:2022), "pbp_data.csv")
 df = read_csv("pbp_data.csv", col_types = cols())
 ```
 
@@ -34,7 +34,7 @@ paste("number of regular season games in data:", nrow(unique_games))
 ```
 
 ```{r}
-ypg_by_team = df |>
+team_stats = df |>
   filter(season_type == "REG") |>
   filter(!is.na(posteam) & !is.na(yards_gained)) |>
   group_by(game_id, posteam) |>
@@ -48,13 +48,19 @@ ypg_by_team = df |>
 ```
 
 ```{r}
-ypg_by_team |>
+team_stats |>
   ggplot(aes(reorder(posteam, ypg), ypg)) +
-  geom_col(aes(fill = season), position = "stack", width = 0.7) +
+  geom_col(position = "stack", width = 0.7, aes(fill = posteam)) +
   coord_flip() +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
   labs(x = NULL, y = "yards per game",
        title = paste("yards per game by team each season since", start_season)) +
-  theme(legend.position = "bottom",
+  theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5))
 ```
 
@@ -149,7 +155,11 @@ wl_df |>
   coord_flip() +
   labs(x = NULL, y = "win proportion",
        title = paste("win proportions for each team since", start_season)) +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+wl_df = wl_df |>
+  mutate(win_prop = round(wins / (wins + losses + ties), 3))
 ```
 
 ```{r}
@@ -206,24 +216,14 @@ wl_df |>
 
 ```{r}
 xyz = game_results |>
-  left_join(ypg_by_team, by = c("home_team" = "posteam")) |>
+  left_join(team_stats, by = c("home_team" = "posteam")) |>
   select(-season) |>
   rename(home_ypg = ypg) |>
-  left_join(ypg_by_team, by = c("away_team" = "posteam")) |>
+  left_join(team_stats, by = c("away_team" = "posteam")) |>
   select(-season) |>
   rename(away_ypg = ypg) |>
   filter(win_team != "tie") |>
   mutate(home_win = ifelse(win_team == "home", 1, 0))
-
-matchup = data.frame(home_team = "CHI", away_team = "PHI")
-
-# matchup |>
-#   left_join(ypg_by_team, by = c("home_team" = "posteam")) |>
-#   select(-season) |>
-#   rename(home_ypg = ypg) |>
-#   left_join(ypg_by_team, by = c("away_team" = "posteam")) |>
-#   select(-season) |>
-#   rename(away_ypg = ypg)
 
 win_mod = glm(home_win ~ home_ypg + away_ypg, data = xyz, family = "binomial")
 
@@ -232,10 +232,10 @@ predict_winner = function(home, away) {
   matchup = data.frame(home_team = home, away_team = away)
   
   matchup = matchup |>
-    left_join(ypg_by_team, by = c("home_team" = "posteam")) |>
+    left_join(team_stats, by = c("home_team" = "posteam")) |>
     select(-season) |>
     rename(home_ypg = ypg) |>
-    left_join(ypg_by_team, by = c("away_team" = "posteam")) |>
+    left_join(team_stats, by = c("away_team" = "posteam")) |>
     select(-season) |>
     rename(away_ypg = ypg)
   
@@ -253,6 +253,153 @@ predict_winner("BUF", "MIA")
 predict_winner("NYJ", "DET")
 predict_winner("CAR", "PIT")
 ```
+
+```{r}
+# adding win_prop to team_stats
+team_stats = wl_df |>
+  select(team, win_prop) |>
+  right_join(team_stats, by = c("team" = "posteam")) |>
+  select(-season)
+
+team_stats = df |>
+  filter(season_type == "REG") |>
+  filter(!is.na(defteam) & !is.na(yards_gained)) |>
+  group_by(game_id, defteam) |>
+  summarise(n = n(),
+            yds = sum(yards_gained),
+            .groups = "drop") |>
+  mutate(season = factor(substr(game_id, 1, 4))) |>
+  group_by(defteam, season) |>
+  summarise(ypg = round(mean(yds), 0),
+            .groups = "drop") |>
+  select(defteam, ypg) |>
+  right_join(team_stats, by = c("defteam" = "team")) |>
+  rename(off_ypg = ypg.y,
+         def_ypg = ypg.x,
+         team = defteam) |>
+  select(team, win_prop, off_ypg, def_ypg)
+```
+
+```{r}
+x = game_results |>
+  left_join(team_stats, by = c("home_team" = "team")) |>
+  rename(home_win_prop = win_prop,
+         home_off_ypg = off_ypg,
+         home_def_ypg = def_ypg) |>
+  left_join(team_stats, by = c("away_team" = "team")) |>
+  rename(away_win_prop = win_prop,
+         away_off_ypg = off_ypg,
+         away_def_ypg = def_ypg) |>
+  filter(win_team != "tie") |>
+  mutate(home_win = ifelse(win_team == "home", 1, 0))
+
+win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg +
+                         away_win_prop + away_off_ypg + away_def_ypg,
+              data = x, family = "binomial")
+
+# need df with matchup stats
+
+matchup = data.frame(home = "CHI", away = "PHI")
+
+matchup = matchup |>
+  left_join(team_stats, by = c("home" = "team")) |>
+  rename(home_win_prop = win_prop,
+         home_off_ypg = off_ypg,
+         home_def_ypg = def_ypg) |>
+  left_join(team_stats, by = c("away" = "team")) |>
+  rename(away_win_prop = win_prop,
+         away_off_ypg = off_ypg,
+         away_def_ypg = def_ypg)
+
+pick_winner = function(home, away) {
+  
+  matchup = data.frame(home = home, away = away)
+  
+  matchup = matchup |>
+    left_join(team_stats, by = c("home" = "team")) |>
+    rename(home_win_prop = win_prop,
+           home_off_ypg = off_ypg,
+           home_def_ypg = def_ypg) |>
+    left_join(team_stats, by = c("away" = "team")) |>
+    rename(away_win_prop = win_prop,
+           away_off_ypg = off_ypg,
+           away_def_ypg = def_ypg)
+  
+  prob = round(predict(win_mod, matchup, type = "response"), 4)
+  winner = ifelse(prob >= 0.5, home, away)
+  loser = ifelse(prob >= 0.5, away, home)
+  location = ifelse(prob >= 0.5, "v.", "@")
+  conf = ifelse(prob >= 0.5, prob, 1 - prob)
+  paste0(winner, " will win ", location, " ", loser, " (", conf, ")")
+  
+}
+
+pick_winner("CHI", "PHI")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
