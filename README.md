@@ -365,16 +365,86 @@ pick_winner = function(home, away) {
            away_off_ypg = off_ypg,
            away_def_ypg = def_ypg)
   
-  prob = round(predict(win_mod, matchup, type = "response"), 4)
+  prob = predict(win_mod, matchup, type = "response")
   winner = ifelse(prob >= 0.5, home, away)
   loser = ifelse(prob >= 0.5, away, home)
   location = ifelse(prob >= 0.5, "v.", "@")
   conf = ifelse(prob >= 0.5, prob, 1 - prob)
-  paste0(winner, " will win ", location, " ", loser, " (", conf, ")")
+  return(paste0(winner, " will win ", location, " ", loser, " (", round(conf, 3), ")"))
   
 }
 
 pick_winner("CHI", "PHI")
 ```
 
-    ## [1] "PHI will win @ CHI (0.9601)"
+    ## [1] "PHI will win @ CHI (0.96)"
+
+``` r
+pick_winner_return_team = function(home, away) {
+  
+  matchup = data.frame(home = home, away = away)
+  
+  matchup = matchup |>
+    left_join(team_stats, by = c("home" = "team")) |>
+    rename(home_win_prop = win_prop,
+           home_off_ypg = off_ypg,
+           home_def_ypg = def_ypg) |>
+    left_join(team_stats, by = c("away" = "team")) |>
+    rename(away_win_prop = win_prop,
+           away_off_ypg = off_ypg,
+           away_def_ypg = def_ypg)
+  
+  prob = predict(win_mod, matchup, type = "response")
+  winner = ifelse(prob >= 0.5, home, away)
+  loser = ifelse(prob >= 0.5, away, home)
+  location = ifelse(prob >= 0.5, "v.", "@")
+  conf = ifelse(prob >= 0.5, prob, 1 - prob)
+  return(winner)
+  
+}
+```
+
+``` r
+week15 = data.frame(home = c("SEA", "MIN", "CLE", "BUF", "CHI", "NYJ", "CAR", "HOU",
+                    "NO", "JAX", "DEN", "LV", "LAC", "TB", "WAS", "GB"),
+           away = c("SF", "IND", "BAL", "MIA", "PHI", "DET", "PIT", "KC",
+                    "ATL", "DAL", "ARI", "NE", "TEN", "CIN", "NYG", "LA"))
+
+week15 |>
+  mutate(winner = pick_winner_return_team(home, away),
+         msg = pick_winner(home, away))
+```
+
+    ##    home away winner                         msg
+    ## 1   SEA   SF     SF   SF will win @ SEA (0.678)
+    ## 2   MIN  IND    MIN MIN will win v. IND (0.918)
+    ## 3   CLE  BAL    BAL  BAL will win @ CLE (0.765)
+    ## 4   BUF  MIA    BUF BUF will win v. MIA (0.799)
+    ## 5   CHI  PHI    PHI   PHI will win @ CHI (0.96)
+    ## 6   NYJ  DET    NYJ  NYJ will win v. DET (0.66)
+    ## 7   CAR  PIT    PIT  PIT will win @ CAR (0.529)
+    ## 8   HOU   KC     KC   KC will win @ HOU (0.971)
+    ## 9    NO  ATL    ATL   ATL will win @ NO (0.553)
+    ## 10  JAX  DAL    DAL   DAL will win @ JAX (0.84)
+    ## 11  DEN  ARI    DEN DEN will win v. ARI (0.501)
+    ## 12   LV   NE     NE    NE will win @ LV (0.607)
+    ## 13  LAC  TEN    TEN  TEN will win @ LAC (0.525)
+    ## 14   TB  CIN    CIN   CIN will win @ TB (0.688)
+    ## 15  WAS  NYG    WAS WAS will win v. NYG (0.525)
+    ## 16   GB   LA     GB   GB will win v. LA (0.655)
+
+``` r
+res = x |>
+  mutate(pred_winner = pick_winner_return_team(home_team, away_team),
+         correct = case_when(home_win == 0 & pred_winner == away_team ~ 1,
+                             home_win == 0 & pred_winner == home_team ~ 0,
+                             home_win == 1 & pred_winner == home_team ~ 1,
+                             home_win == 1 & pred_winner == away_team ~ 0)) |>
+  count(correct) |>
+  pull(n)
+
+acc = round(res[2] / sum(res), 3)
+paste("current model accuracy:", acc)
+```
+
+    ## [1] "current model accuracy: 0.739"
