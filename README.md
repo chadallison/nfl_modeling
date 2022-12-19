@@ -32,7 +32,7 @@ unique_games = df |>
 paste("number of regular season games in data:", nrow(unique_games))
 ```
 
-    ## [1] "number of regular season games in data: 209"
+    ## [1] "number of regular season games in data: 223"
 
 ``` r
 team_stats = df |>
@@ -377,7 +377,7 @@ pick_winner = function(home, away) {
 pick_winner("CHI", "PHI")
 ```
 
-    ## [1] "PHI will win @ CHI (0.96)"
+    ## [1] "PHI will win @ CHI (0.961)"
 
 ``` r
 pick_winner_return_team = function(home, away) {
@@ -416,22 +416,22 @@ week15 |>
 ```
 
     ##    home away winner                         msg
-    ## 1   SEA   SF     SF   SF will win @ SEA (0.678)
-    ## 2   MIN  IND    MIN MIN will win v. IND (0.918)
-    ## 3   CLE  BAL    BAL  BAL will win @ CLE (0.765)
-    ## 4   BUF  MIA    BUF BUF will win v. MIA (0.799)
-    ## 5   CHI  PHI    PHI   PHI will win @ CHI (0.96)
-    ## 6   NYJ  DET    NYJ  NYJ will win v. DET (0.66)
-    ## 7   CAR  PIT    PIT  PIT will win @ CAR (0.529)
-    ## 8   HOU   KC     KC   KC will win @ HOU (0.971)
-    ## 9    NO  ATL    ATL   ATL will win @ NO (0.553)
-    ## 10  JAX  DAL    DAL   DAL will win @ JAX (0.84)
-    ## 11  DEN  ARI    DEN DEN will win v. ARI (0.501)
-    ## 12   LV   NE     NE    NE will win @ LV (0.607)
-    ## 13  LAC  TEN    TEN  TEN will win @ LAC (0.525)
-    ## 14   TB  CIN    CIN   CIN will win @ TB (0.688)
-    ## 15  WAS  NYG    WAS WAS will win v. NYG (0.525)
-    ## 16   GB   LA     GB   GB will win v. LA (0.655)
+    ## 1   SEA   SF     SF   SF will win @ SEA (0.656)
+    ## 2   MIN  IND    MIN MIN will win v. IND (0.937)
+    ## 3   CLE  BAL    BAL  BAL will win @ CLE (0.646)
+    ## 4   BUF  MIA    BUF BUF will win v. MIA (0.848)
+    ## 5   CHI  PHI    PHI  PHI will win @ CHI (0.961)
+    ## 6   NYJ  DET    NYJ NYJ will win v. DET (0.565)
+    ## 7   CAR  PIT    PIT  PIT will win @ CAR (0.621)
+    ## 8   HOU   KC     KC    KC will win @ HOU (0.97)
+    ## 9    NO  ATL     NO  NO will win v. ATL (0.565)
+    ## 10  JAX  DAL    DAL  DAL will win @ JAX (0.729)
+    ## 11  DEN  ARI    DEN DEN will win v. ARI (0.602)
+    ## 12   LV   NE     LV   LV will win v. NE (0.522)
+    ## 13  LAC  TEN    LAC LAC will win v. TEN (0.585)
+    ## 14   TB  CIN    CIN   CIN will win @ TB (0.743)
+    ## 15  WAS  NYG    NYG  NYG will win @ WAS (0.568)
+    ## 16   GB   LA     GB    GB will win v. LA (0.67)
 
 ``` r
 res = x |>
@@ -447,4 +447,73 @@ acc = round(res[2] / sum(res), 3)
 paste("current model accuracy:", acc)
 ```
 
-    ## [1] "current model accuracy: 0.739"
+    ## [1] "current model accuracy: 0.724"
+
+``` r
+new_gr = game_results |>
+  left_join(wl_df, by = c("home_team" = "team")) |>
+  rename(home_win_prop = win_prop) |>
+  select(-c(wins, losses, ties)) |>
+  left_join(wl_df, by = c("away_team" = "team")) |>
+  rename(away_win_prop = win_prop) |>
+  select(-c(wins, losses, ties))
+
+head(new_gr) # use this to make the record above .500 column
+```
+
+    ## # A tibble: 6 × 7
+    ##   home_team away_team total_home_score total_away_score win_team home_win_prop
+    ##   <chr>     <chr>                <dbl>            <dbl> <chr>            <dbl>
+    ## 1 NYJ       BAL                      9               24 away             0.5  
+    ## 2 LA        BUF                     10               31 away             0.308
+    ## 3 CAR       CLE                     24               26 away             0.357
+    ## 4 SEA       DEN                     17               16 home             0.5  
+    ## 5 MIN       GB                      23                7 home             0.786
+    ## 6 HOU       IND                     20               20 tie              0.071
+    ## # … with 1 more variable: away_win_prop <dbl>
+
+``` r
+margins_df = data.frame(team = all_teams, margin = NA)
+
+for (i in 1:nrow(margins_df)) {
+  
+  team = margins_df$team[i]
+  
+  home_margin = new_gr |>
+    filter(home_team == team) |>
+    mutate(margin = total_home_score - total_away_score) |>
+    pull(margin) |>
+    sum()
+  
+  away_margin = new_gr |>
+    filter(away_team == team) |>
+    mutate(margin = total_away_score - total_home_score) |>
+    pull(margin) |>
+    sum()
+  
+  margins_df$margin[i] = home_margin + away_margin
+  
+}
+
+wl_df |>
+  left_join(margins_df, by = "team") |>
+  ggplot(aes(win_prop, margin)) +
+  geom_point(aes(col = team)) +
+  geom_line(stat = "smooth", method = "lm", formula = y ~ x, size = 1, linetype = "dashed", alpha = 0.25) +
+  ggrepel::geom_text_repel(aes(x = win_prop, 
+                      y = margin, 
+                      label = team),
+                      size = 3) +
+  scale_color_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+  labs(x = "win percentage", y = "overall point differential",
+       title = "point differentials by team") +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+```
+
+![](nfl_model_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
