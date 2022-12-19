@@ -517,3 +517,115 @@ wl_df |>
 ```
 
 ![](nfl_model_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+
+``` r
+# updating team_stats with margins
+team_stats = team_stats |>
+  left_join(margins_df, by = "team")
+```
+
+``` r
+# updating model
+x = game_results |>
+  left_join(team_stats, by = c("home_team" = "team")) |>
+  rename(home_win_prop = win_prop,
+         home_off_ypg = off_ypg,
+         home_def_ypg = def_ypg,
+         home_margin = margin) |>
+  left_join(team_stats, by = c("away_team" = "team")) |>
+  rename(away_win_prop = win_prop,
+         away_off_ypg = off_ypg,
+         away_def_ypg = def_ypg,
+         away_margin = margin) |>
+  filter(win_team != "tie") |>
+  mutate(home_win = ifelse(win_team == "home", 1, 0))
+
+win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_margin +
+                         away_win_prop + away_off_ypg + away_def_ypg + away_margin,
+              data = x, family = "binomial")
+```
+
+``` r
+pick_winner = function(home, away) {
+  
+  matchup = data.frame(home = home, away = away)
+  
+  matchup = matchup |>
+    left_join(team_stats, by = c("home" = "team")) |>
+    rename(home_win_prop = win_prop,
+           home_off_ypg = off_ypg,
+           home_def_ypg = def_ypg,
+           home_margin = margin) |>
+    left_join(team_stats, by = c("away" = "team")) |>
+    rename(away_win_prop = win_prop,
+           away_off_ypg = off_ypg,
+           away_def_ypg = def_ypg,
+           away_margin = margin)
+  
+  prob = predict(win_mod, matchup, type = "response")
+  winner = ifelse(prob >= 0.5, home, away)
+  loser = ifelse(prob >= 0.5, away, home)
+  location = ifelse(prob >= 0.5, "v.", "@")
+  conf = ifelse(prob >= 0.5, prob, 1 - prob)
+  return(paste0(winner, " will win ", location, " ", loser, " (", round(conf, 3), ")"))
+  
+}
+
+pick_winner_return_team = function(home, away) {
+  
+  matchup = data.frame(home = home, away = away)
+  
+  matchup = matchup |>
+    left_join(team_stats, by = c("home" = "team")) |>
+    rename(home_win_prop = win_prop,
+           home_off_ypg = off_ypg,
+           home_def_ypg = def_ypg,
+           home_margin = margin) |>
+    left_join(team_stats, by = c("away" = "team")) |>
+    rename(away_win_prop = win_prop,
+           away_off_ypg = off_ypg,
+           away_def_ypg = def_ypg,
+           away_margin = margin)
+  
+  prob = predict(win_mod, matchup, type = "response")
+  winner = ifelse(prob >= 0.5, home, away)
+  loser = ifelse(prob >= 0.5, away, home)
+  location = ifelse(prob >= 0.5, "v.", "@")
+  conf = ifelse(prob >= 0.5, prob, 1 - prob)
+  return(winner)
+  
+}
+```
+
+``` r
+week16 = data.frame(home = c("NYJ", "BAL", "CAR", "KC", "CLE", "TEN", "NE", "MIN", "CHI", "SF", "DAL", "PIT", "MIA", "LA", "ATL", "IND"),
+           away = c("JAX", "ATL", "DET", "SEA", "NO", "HOU", "CIN", "NYG", "BUF", "WAS", "PHI", "LV", "GB", "DEN", "TB", "LAC"))
+
+# week 16 predictions
+week16 |>
+  mutate(pred = pick_winner(home, away)) |>
+  pull(pred)
+```
+
+    ##  [1] "NYJ will win v. JAX (0.756)" "BAL will win v. ATL (0.881)"
+    ##  [3] "DET will win @ CAR (0.66)"   "KC will win v. SEA (0.915)" 
+    ##  [5] "CLE will win v. NO (0.741)"  "TEN will win v. HOU (0.909)"
+    ##  [7] "CIN will win @ NE (0.656)"   "MIN will win v. NYG (0.589)"
+    ##  [9] "BUF will win @ CHI (0.89)"   "SF will win v. WAS (0.835)" 
+    ## [11] "PHI will win @ DAL (0.621)"  "PIT will win v. LV (0.569)" 
+    ## [13] "MIA will win v. GB (0.78)"   "LA will win v. DEN (0.581)" 
+    ## [15] "TB will win @ ATL (0.63)"    "LAC will win @ IND (0.871)"
+
+``` r
+acc = game_results |>
+  mutate(pred = pick_winner_return_team(home_team, away_team),
+         winner = ifelse(win_team == "home", home_team, away_team),
+         correct = ifelse(pred == winner, 1, 0)) |>
+  summarise(acc = sum(correct) / n()) |>
+  pull(acc) |>
+  round(3)
+
+paste("current model accuracy:", acc)
+```
+
+    ## [1] "current model accuracy: 0.753"
