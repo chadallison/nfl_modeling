@@ -59,7 +59,7 @@ team_stats |>
     "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
     "#BB0000", "#DA0000", "#003472", "#690A00")) +
   labs(x = NULL, y = "yards per game",
-       title = paste("yards per game by team each season since", start_season)) +
+       title = paste("yards per game by team in", start_season)) +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5))
 ```
@@ -83,7 +83,7 @@ df |>
     "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
     "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
     "#BB0000", "#DA0000", "#003472", "#690A00")) +
-  labs(x = NULL, y = "total yards", title = paste("yards per game by team since", start_season)) +
+  labs(x = NULL, y = "total yards", title = paste("yards per game by team in", start_season)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -154,7 +154,7 @@ wl_df |>
     "#BB0000", "#DA0000", "#003472", "#690A00")) +
   coord_flip() +
   labs(x = NULL, y = "win proportion",
-       title = paste("win proportions for each team since", start_season)) +
+       title = paste("win proportions for each team in", start_season)) +
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = "none")
 
@@ -162,7 +162,7 @@ wl_df = wl_df |>
   mutate(win_prop = round(wins / (wins + losses + ties), 3))
 ```
 
-```{r}
+```{r eval = F}
 df |>
   filter(season_type == "REG") |>
   filter(!is.na(posteam) & !is.na(yards_gained)) |>
@@ -198,6 +198,7 @@ wl_df |>
   left_join(team_ypg, by = "team") |>
   ggplot(aes(ypg, win_prop)) +
   geom_point(aes(col = team), size = 3) +
+  geom_line(stat = "smooth", method = "lm", formula = y ~ x, linewidth = 1, linetype = "dashed", alpha = 0.25) +
   ggrepel::geom_text_repel(aes(x = ypg, 
                       y = win_prop, 
                       label = team),
@@ -209,12 +210,12 @@ wl_df |>
     "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
     "#BB0000", "#DA0000", "#003472", "#690A00")) +
   labs(x = "yards per game", y = "win percentage", col = NULL,
-       title = paste("relationship between yards per game and win percentage since", start_season)) +
+       title = paste("relationship between yards per game and win percentage in", start_season)) +
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = "none")
 ```
 
-```{r}
+```{r old_model, eval = F}
 xyz = game_results |>
   left_join(team_stats, by = c("home_team" = "posteam")) |>
   select(-season) |>
@@ -280,7 +281,7 @@ team_stats = df |>
   select(team, win_prop, off_ypg, def_ypg)
 ```
 
-```{r}
+```{r eval = F}
 x = game_results |>
   left_join(team_stats, by = c("home_team" = "team")) |>
   rename(home_win_prop = win_prop,
@@ -360,7 +361,7 @@ pick_winner_return_team = function(home, away) {
 }
 ```
 
-```{r}
+```{r eval = F}
 week15 = data.frame(home = c("SEA", "MIN", "CLE", "BUF", "CHI", "NYJ", "CAR", "HOU",
                     "NO", "JAX", "DEN", "LV", "LAC", "TB", "WAS", "GB"),
            away = c("SF", "IND", "BAL", "MIA", "PHI", "DET", "PIT", "KC",
@@ -371,7 +372,7 @@ week15 |>
          msg = pick_winner(home, away))
 ```
 
-```{r}
+```{r eval = F}
 res = x |>
   mutate(pred_winner = pick_winner_return_team(home_team, away_team),
          correct = case_when(home_win == 0 & pred_winner == away_team ~ 1,
@@ -424,7 +425,7 @@ wl_df |>
   left_join(margins_df, by = "team") |>
   ggplot(aes(win_prop, margin)) +
   geom_point(aes(col = team)) +
-  geom_line(stat = "smooth", method = "lm", formula = y ~ x, size = 1, linetype = "dashed", alpha = 0.25) +
+  geom_line(stat = "smooth", method = "lm", formula = y ~ x, linewidth = 1, linetype = "dashed", alpha = 0.25) +
   ggrepel::geom_text_repel(aes(x = win_prop, 
                       y = margin, 
                       label = team),
@@ -447,7 +448,7 @@ team_stats = team_stats |>
   left_join(margins_df, by = "team")
 ```
 
-```{r}
+```{r eval = F}
 # updating model
 x = game_results |>
   left_join(team_stats, by = c("home_team" = "team")) |>
@@ -468,7 +469,7 @@ win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_marg
               data = x, family = "binomial")
 ```
 
-```{r}
+```{r eval = F}
 pick_winner = function(home, away) {
   
   matchup = data.frame(home = home, away = away)
@@ -520,7 +521,7 @@ pick_winner_return_team = function(home, away) {
 }
 ```
 
-```{r}
+```{r eval = F}
 week16 = data.frame(home = c("NYJ", "BAL", "CAR", "KC", "CLE", "TEN", "NE", "MIN", "CHI", "SF", "DAL", "PIT", "MIA", "LA", "ATL", "IND"),
            away = c("JAX", "ATL", "DET", "SEA", "NO", "HOU", "CIN", "NYG", "BUF", "WAS", "PHI", "LV", "GB", "DEN", "TB", "LAC"))
 
@@ -530,7 +531,7 @@ week16 |>
   pull(pred)
 ```
 
-```{r}
+```{r eval = F}
 acc = game_results |>
   mutate(pred = pick_winner_return_team(home_team, away_team),
          winner = ifelse(win_team == "home", home_team, away_team),
@@ -577,7 +578,7 @@ team_stats = team_stats |>
   left_join(df500, by = "team")
 ```
 
-```{r}
+```{r eval = F}
 # updating model
 x = game_results |>
   left_join(team_stats, by = c("home_team" = "team")) |>
@@ -600,7 +601,7 @@ win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_marg
               data = x, family = "binomial") # current accuracy is higher without wp500 variables
 ```
 
-```{r}
+```{r eval = F}
 pick_winner = function(home, away) {
   
   matchup = data.frame(home = home, away = away)
@@ -656,7 +657,7 @@ pick_winner_return_team = function(home, away) {
 }
 ```
 
-```{r}
+```{r eval = F}
 acc = game_results |>
   filter(win_team != "tie") |>
   mutate(winner = ifelse(win_team == "home", home_team, away_team),
@@ -669,18 +670,18 @@ acc = game_results |>
 paste("current model accuracy:", acc)
 ```
 
-at this point in time these are the model predictors
+<!-- at this point in time these are the model predictors -->
 
-- home team win percentage
-- home team offensive ypg
-- home team defensive ypg
-- home team point differential
-- home team win percentage v. teams with .500 or better win percentage
-- away team win percentage
-- away team offensive ypg
-- away team defensive ypg
-- away team point differential
-- away team win percentage v. teams with .500 or better win percentage
+<!-- - home team win percentage -->
+<!-- - home team offensive ypg -->
+<!-- - home team defensive ypg -->
+<!-- - home team point differential -->
+<!-- - home team win percentage v. teams with .500 or better win percentage -->
+<!-- - away team win percentage -->
+<!-- - away team offensive ypg -->
+<!-- - away team defensive ypg -->
+<!-- - away team point differential -->
+<!-- - away team win percentage v. teams with .500 or better win percentage -->
 
 ```{r}
 # create home and away win percentages
@@ -871,6 +872,60 @@ df |>
         plot.subtitle = element_text(hjust = 0.5, size = 9))
 ```
 
+```{r}
+# add third and fourth down rates
+# and ytg on third down
+# penalties
+
+off_ytg3 = df |>
+  filter(down == 3 & play_type != "no_play") |>
+  group_by(posteam) |>
+  summarise(ytg3 = round(mean(ydstogo), 3))
+
+off_conv3 = df |>
+  filter(down == 3 & play_type != "no_play") |>
+  transmute(posteam, ydstogo, yards_gained,
+            converted = ifelse(yards_gained >= ydstogo, 1, 0))  |>
+  group_by(posteam) |>
+  summarise(conv3 = round(sum(converted) / n(), 3))
+
+def_ytg3 = df |>
+  filter(down == 3 & play_type != "no_play") |>
+  group_by(defteam) |>
+  summarise(ytg3 = round(mean(ydstogo), 3))
+
+def_conv3 = df |>
+  filter(down == 3 & play_type != "no_play") |>
+  transmute(defteam, ydstogo, yards_gained,
+            converted = ifelse(yards_gained >= ydstogo, 1, 0))  |>
+  group_by(defteam) |>
+  summarise(conv3 = round(sum(converted) / n(), 3))
+
+df_3rd_down = off_ytg3 |>
+  left_join(off_conv3, by = "posteam") |>
+  rename(off_ytg3 = ytg3,
+         off_conv3 = conv3) |>
+  left_join(def_ytg3, by = c("posteam" = "defteam")) |>
+  rename(def_ytg3 = ytg3) |>
+  left_join(def_conv3, by = c("posteam" = "defteam")) |>
+  rename(def_conv3 = conv3,
+         team = posteam)
+
+rm(off_ytg3, off_conv3, def_ytg3, def_conv3)
+
+df_3rd_down |>
+  pivot_longer(!team) |>
+  ggplot(aes(team, value)) +
+  geom_col(aes(fill = team)) +
+  facet_wrap(~ name) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00"))
+```
 
 
 
