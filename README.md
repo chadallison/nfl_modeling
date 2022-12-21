@@ -20,9 +20,27 @@ theme_set(theme_classic())
 
 ``` r
 start_season = 2022
-# write_csv(load_pbp(seasons = start_season:2022), "pbp_data.csv")
-df = read_csv("pbp_data.csv", col_types = cols())
+write_csv(load_pbp(seasons = start_season:2022), "pbp_data.csv")
+df = read_csv("pbp_data.csv", col_types = cols()) # this prevents message popup
+head(df)
 ```
+
+    ## # A tibble: 6 × 372
+    ##   play_id game_id  old_g…¹ home_…² away_…³ seaso…⁴  week posteam poste…⁵ defteam
+    ##     <dbl> <chr>      <dbl> <chr>   <chr>   <chr>   <dbl> <chr>   <chr>   <chr>  
+    ## 1       1 2022_01…  2.02e9 NYJ     BAL     REG         1 <NA>    <NA>    <NA>   
+    ## 2      43 2022_01…  2.02e9 NYJ     BAL     REG         1 NYJ     home    BAL    
+    ## 3      68 2022_01…  2.02e9 NYJ     BAL     REG         1 NYJ     home    BAL    
+    ## 4      89 2022_01…  2.02e9 NYJ     BAL     REG         1 NYJ     home    BAL    
+    ## 5     115 2022_01…  2.02e9 NYJ     BAL     REG         1 NYJ     home    BAL    
+    ## 6     136 2022_01…  2.02e9 NYJ     BAL     REG         1 NYJ     home    BAL    
+    ## # … with 362 more variables: side_of_field <chr>, yardline_100 <dbl>,
+    ## #   game_date <date>, quarter_seconds_remaining <dbl>,
+    ## #   half_seconds_remaining <dbl>, game_seconds_remaining <dbl>,
+    ## #   game_half <chr>, quarter_end <dbl>, drive <dbl>, sp <dbl>, qtr <dbl>,
+    ## #   down <dbl>, goal_to_go <dbl>, time <time>, yrdln <chr>, ydstogo <dbl>,
+    ## #   ydsnet <dbl>, desc <chr>, play_type <chr>, yards_gained <dbl>,
+    ## #   shotgun <dbl>, no_huddle <dbl>, qb_dropback <dbl>, qb_kneel <dbl>, …
 
 ``` r
 unique_games = df |>
@@ -32,7 +50,7 @@ unique_games = df |>
 paste("number of regular season games in data:", nrow(unique_games))
 ```
 
-    ## [1] "number of regular season games in data: 223"
+    ## [1] "number of regular season games in data: 224"
 
 ``` r
 team_stats = df |>
@@ -413,10 +431,10 @@ head(new_gr) # use this to make the record above .500 column
     ##   home_team away_team total_home_score total_away_score win_team home_…¹ away_…²
     ##   <chr>     <chr>                <dbl>            <dbl> <chr>      <dbl>   <dbl>
     ## 1 NYJ       BAL                      9               24 away       0.5     0.643
-    ## 2 LA        BUF                     10               31 away       0.308   0.786
+    ## 2 LA        BUF                     10               31 away       0.286   0.786
     ## 3 CAR       CLE                     24               26 away       0.357   0.429
     ## 4 SEA       DEN                     17               16 home       0.5     0.286
-    ## 5 MIN       GB                      23                7 home       0.786   0.385
+    ## 5 MIN       GB                      23                7 home       0.786   0.429
     ## 6 HOU       IND                     20               20 tie        0.071   0.286
     ## # … with abbreviated variable names ¹​home_win_prop, ²​away_win_prop
 
@@ -857,7 +875,7 @@ acc = game_results |>
 paste("current model accuracy:", acc)
 ```
 
-    ## [1] "current model accuracy: 0.762"
+    ## [1] "current model accuracy: 0.763"
 
 ``` r
 week16 = data.frame(home = c("NYJ", "BAL", "CAR", "KC", "CLE", "TEN", "NE", "MIN", "CHI", "SF", "DAL", "PIT", "MIA", "LA", "ATL", "IND"),
@@ -872,22 +890,22 @@ for (i in 1:length(preds)) {
 }
 ```
 
-    ## [1] "NYJ will win v. JAX (0.702)"
-    ## [1] "BAL will win v. ATL (0.931)"
-    ## [1] "DET will win @ CAR (0.699)"
-    ## [1] "KC will win v. SEA (0.874)"
-    ## [1] "CLE will win v. NO (0.889)"
-    ## [1] "TEN will win v. HOU (0.842)"
-    ## [1] "CIN will win @ NE (0.733)"
-    ## [1] "MIN will win v. NYG (0.575)"
-    ## [1] "BUF will win @ CHI (0.935)"
-    ## [1] "SF will win v. WAS (0.758)"
-    ## [1] "PHI will win @ DAL (0.728)"
-    ## [1] "PIT will win v. LV (0.571)"
-    ## [1] "MIA will win v. GB (0.93)"
-    ## [1] "LA will win v. DEN (0.713)"
-    ## [1] "ATL will win v. TB (0.587)"
-    ## [1] "LAC will win @ IND (0.878)"
+    ## [1] "NYJ will win v. JAX (0.705)"
+    ## [1] "BAL will win v. ATL (0.932)"
+    ## [1] "DET will win @ CAR (0.694)"
+    ## [1] "KC will win v. SEA (0.871)"
+    ## [1] "CLE will win v. NO (0.885)"
+    ## [1] "TEN will win v. HOU (0.844)"
+    ## [1] "CIN will win @ NE (0.732)"
+    ## [1] "MIN will win v. NYG (0.571)"
+    ## [1] "BUF will win @ CHI (0.937)"
+    ## [1] "SF will win v. WAS (0.755)"
+    ## [1] "PHI will win @ DAL (0.73)"
+    ## [1] "PIT will win v. LV (0.579)"
+    ## [1] "MIA will win v. GB (0.924)"
+    ## [1] "LA will win v. DEN (0.691)"
+    ## [1] "ATL will win v. TB (0.593)"
+    ## [1] "LAC will win @ IND (0.877)"
 
 ``` r
 # game_results
@@ -922,24 +940,24 @@ df |>
 # penalties
 
 off_ytg3 = df |>
-  filter(down == 3 & play_type != "no_play") |>
+  filter(down == 3 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
   group_by(posteam) |>
   summarise(ytg3 = round(mean(ydstogo), 3))
 
 off_conv3 = df |>
-  filter(down == 3 & play_type != "no_play") |>
+  filter(down == 3 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
   transmute(posteam, ydstogo, yards_gained,
             converted = ifelse(yards_gained >= ydstogo, 1, 0))  |>
   group_by(posteam) |>
   summarise(conv3 = round(sum(converted) / n(), 3))
 
 def_ytg3 = df |>
-  filter(down == 3 & play_type != "no_play") |>
+  filter(down == 3 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
   group_by(defteam) |>
   summarise(ytg3 = round(mean(ydstogo), 3))
 
 def_conv3 = df |>
-  filter(down == 3 & play_type != "no_play") |>
+  filter(down == 3 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
   transmute(defteam, ydstogo, yards_gained,
             converted = ifelse(yards_gained >= ydstogo, 1, 0))  |>
   group_by(defteam) |>
@@ -956,13 +974,14 @@ df_3rd_down = off_ytg3 |>
          team = posteam)
 
 rm(off_ytg3, off_conv3, def_ytg3, def_conv3)
-
+    
 df_3rd_down |>
-  pivot_longer(!team) |>
-  ggplot(aes(team, value)) +
+  ggplot(aes(reorder(team, off_conv3), off_conv3)) +
   geom_col(aes(fill = team)) +
-  facet_wrap(~ name) +
   coord_flip() +
+  labs(x = NULL, y = "conversion rate", fill = NULL,
+       title = "third down offensive conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5)) +
   scale_fill_manual(values = c(
     "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
     "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
@@ -972,3 +991,115 @@ df_3rd_down |>
 ```
 
 ![](nfl_model_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
+
+``` r
+df_3rd_down |>
+  ggplot(aes(reorder(team, -def_conv3), def_conv3)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  labs(x = NULL, y = "conversion rate", fill = NULL,
+       title = "third down defensive conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00"))
+```
+
+![](nfl_model_files/figure-gfm/unnamed-chunk-29-2.png)<!-- -->
+
+``` r
+df_3rd_down |>
+  transmute(team, conv = off_conv3 - def_conv3) |>
+  ggplot(aes(reorder(team, conv), conv)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  labs(x = NULL, y = "difference in conversion rates", fill = NULL,
+       title = "difference in offensive and defensive third down conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00"))
+```
+
+![](nfl_model_files/figure-gfm/unnamed-chunk-29-3.png)<!-- -->
+
+``` r
+off_conv4 = df |>
+  filter(down == 4 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
+  select(posteam, ydstogo, yards_gained) |>
+  mutate(converted = ifelse(yards_gained >= ydstogo, 1, 0)) |>
+  group_by(posteam) |>
+  summarise(off_conv4 = round(sum(converted) / n(), 3))
+
+def_conv4 = df |>
+  filter(down == 4 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
+  select(defteam, ydstogo, yards_gained) |>
+  mutate(converted = ifelse(yards_gained >= ydstogo, 1, 0)) |>
+  group_by(defteam) |>
+  summarise(def_conv4 = round(sum(converted) / n(), 3))
+
+df_4th_down = off_conv4 |>
+  left_join(def_conv4, by = c("posteam" = "defteam")) |>
+  rename(team = posteam)
+
+rm(off_conv4, def_conv4)
+
+df_4th_down |>
+  mutate(conv = off_conv4 - def_conv4) |>
+  ggplot(aes(reorder(team, conv), conv)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+      labs(x = NULL, y = "difference in conversion rates", fill = NULL,
+           title = "difference in offensive and defensive fourth down conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+![](nfl_model_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
+
+``` r
+df_4th_down |>
+  ggplot(aes(reorder(team, off_conv4), off_conv4)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+      labs(x = NULL, y = "conversion rate", fill = NULL,
+           title = "fourth down offensive conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+![](nfl_model_files/figure-gfm/unnamed-chunk-30-2.png)<!-- -->
+
+``` r
+df_4th_down |>
+  ggplot(aes(reorder(team, -def_conv4), def_conv4)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+      labs(x = NULL, y = "conversion rate", fill = NULL,
+           title = "fourth down defensive conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+![](nfl_model_files/figure-gfm/unnamed-chunk-30-3.png)<!-- -->

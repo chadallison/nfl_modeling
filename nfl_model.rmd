@@ -21,8 +21,9 @@ theme_set(theme_classic())
 
 ```{r message = F, warning = F}
 start_season = 2022
-# write_csv(load_pbp(seasons = start_season:2022), "pbp_data.csv")
-df = read_csv("pbp_data.csv", col_types = cols())
+write_csv(load_pbp(seasons = start_season:2022), "pbp_data.csv")
+df = read_csv("pbp_data.csv", col_types = cols()) # this prevents message popup
+head(df)
 ```
 
 ```{r}
@@ -878,24 +879,24 @@ df |>
 # penalties
 
 off_ytg3 = df |>
-  filter(down == 3 & play_type != "no_play") |>
+  filter(down == 3 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
   group_by(posteam) |>
   summarise(ytg3 = round(mean(ydstogo), 3))
 
 off_conv3 = df |>
-  filter(down == 3 & play_type != "no_play") |>
+  filter(down == 3 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
   transmute(posteam, ydstogo, yards_gained,
             converted = ifelse(yards_gained >= ydstogo, 1, 0))  |>
   group_by(posteam) |>
   summarise(conv3 = round(sum(converted) / n(), 3))
 
 def_ytg3 = df |>
-  filter(down == 3 & play_type != "no_play") |>
+  filter(down == 3 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
   group_by(defteam) |>
   summarise(ytg3 = round(mean(ydstogo), 3))
 
 def_conv3 = df |>
-  filter(down == 3 & play_type != "no_play") |>
+  filter(down == 3 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
   transmute(defteam, ydstogo, yards_gained,
             converted = ifelse(yards_gained >= ydstogo, 1, 0))  |>
   group_by(defteam) |>
@@ -912,13 +913,43 @@ df_3rd_down = off_ytg3 |>
          team = posteam)
 
 rm(off_ytg3, off_conv3, def_ytg3, def_conv3)
-
+    
 df_3rd_down |>
-  pivot_longer(!team) |>
-  ggplot(aes(team, value)) +
+  ggplot(aes(reorder(team, off_conv3), off_conv3)) +
   geom_col(aes(fill = team)) +
-  facet_wrap(~ name) +
   coord_flip() +
+  labs(x = NULL, y = "conversion rate", fill = NULL,
+       title = "third down offensive conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00"))
+    
+df_3rd_down |>
+  ggplot(aes(reorder(team, -def_conv3), def_conv3)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  labs(x = NULL, y = "conversion rate", fill = NULL,
+       title = "third down defensive conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00"))
+    
+df_3rd_down |>
+  transmute(team, conv = off_conv3 - def_conv3) |>
+  ggplot(aes(reorder(team, conv), conv)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  labs(x = NULL, y = "difference in conversion rates", fill = NULL,
+       title = "difference in offensive and defensive third down conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5)) +
   scale_fill_manual(values = c(
     "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
     "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
@@ -927,6 +958,70 @@ df_3rd_down |>
     "#BB0000", "#DA0000", "#003472", "#690A00"))
 ```
 
+```{r}
+off_conv4 = df |>
+  filter(down == 4 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
+  select(posteam, ydstogo, yards_gained) |>
+  mutate(converted = ifelse(yards_gained >= ydstogo, 1, 0)) |>
+  group_by(posteam) |>
+  summarise(off_conv4 = round(sum(converted) / n(), 3))
+
+def_conv4 = df |>
+  filter(down == 4 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
+  select(defteam, ydstogo, yards_gained) |>
+  mutate(converted = ifelse(yards_gained >= ydstogo, 1, 0)) |>
+  group_by(defteam) |>
+  summarise(def_conv4 = round(sum(converted) / n(), 3))
+
+df_4th_down = off_conv4 |>
+  left_join(def_conv4, by = c("posteam" = "defteam")) |>
+  rename(team = posteam)
+
+rm(off_conv4, def_conv4)
+
+df_4th_down |>
+  mutate(conv = off_conv4 - def_conv4) |>
+  ggplot(aes(reorder(team, conv), conv)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+      labs(x = NULL, y = "difference in conversion rates", fill = NULL,
+           title = "difference in offensive and defensive fourth down conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+df_4th_down |>
+  ggplot(aes(reorder(team, off_conv4), off_conv4)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+      labs(x = NULL, y = "conversion rate", fill = NULL,
+           title = "fourth down offensive conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+df_4th_down |>
+  ggplot(aes(reorder(team, -def_conv4), def_conv4)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+      labs(x = NULL, y = "conversion rate", fill = NULL,
+           title = "fourth down defensive conversion rates") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
 
 
 
