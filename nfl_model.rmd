@@ -10,27 +10,25 @@ predictive model for nfl games (work in progress)
 
 ___
 
-```{r include = F}
-knitr::knit_hooks$set(source = function(x, options) {
-  hook.r = function(x, options) {
-    fence <- "```"
-    language = tolower(options$engine)
-    if (language == 'node') language = 'javascript'
-    if (!options$highlight) language = 'text'
-    if(!is.null(options$fold_code)) {
-      paste0('\n\n', "<details><summary>view code</summary>\n", fence, language, '\n', x, fence,  '\n\n', "</details>\n")
-    } else {
-      paste0('\n\n', fence, language, '\n', x, fence,  '\n\n')
-    }
-  }
-  x = knitr:::hilight_source(x, 'markdown', options)
-  hook.r(paste(c(x, ''), collapse = '\n'), options)
-})
-```
+<!-- knitr::knit_hooks$set(source = function(x, options) { -->
+<!--   hook.r = function(x, options) { -->
+<!--     fence <- "```" -->
+<!--     language = tolower(options$engine) -->
+<!--     if (language == 'node') language = 'javascript' -->
+<!--     if (!options$highlight) language = 'text' -->
+<!--     if(!is.null(options$fold_code)) { -->
+<!--       paste0('\n\n', "<details><summary>view code</summary>\n", fence, language, '\n', x, fence,  '\n\n', "</details>\n") -->
+<!--     } else { -->
+<!--       paste0('\n\n', fence, language, '\n', x, fence,  '\n\n') -->
+<!--     } -->
+<!--   } -->
+<!--   x = knitr:::hilight_source(x, 'markdown', options) -->
+<!--   hook.r(paste(c(x, ''), collapse = '\n'), options) -->
+<!-- }) -->
 
 ### loading required packages
 
-```{r message = F, warning = F, fold_code = T}
+```{r message = F, warning = F}
 library(tidyverse)
 library(nflreadr)
 
@@ -39,14 +37,14 @@ options(nflreadr.verbose = F)
 theme_set(theme_classic())
 ```
 
-```{r message = F, warning = F, fold_code = T}
+```{r message = F, warning = F}
 start_season = 2022
 write_csv(load_pbp(seasons = start_season:2022), "pbp_data.csv")
 df = read_csv("pbp_data.csv", col_types = cols()) # this prevents message popup
 head(df)
 ```
 
-```{r, fold_code = T}
+```{r}
 unique_games = df |>
   filter(season_type == "REG") |>
   count(game_id)
@@ -54,7 +52,7 @@ unique_games = df |>
 paste("number of regular season games in data:", nrow(unique_games))
 ```
 
-```{r, fold_code = T}
+```{r}
 team_stats = df |>
   filter(season_type == "REG") |>
   filter(!is.na(posteam) & !is.na(yards_gained)) |>
@@ -68,7 +66,7 @@ team_stats = df |>
             .groups = "drop")
 ```
 
-```{r, fold_code = T}
+```{r}
 team_stats |>
   ggplot(aes(reorder(posteam, ypg), ypg)) +
   geom_col(position = "stack", width = 0.7, aes(fill = posteam)) +
@@ -85,7 +83,7 @@ team_stats |>
         plot.title = element_text(hjust = 0.5))
 ```
 
-```{r, fold_code = T}
+```{r}
 df |>
   filter(season_type == "REG") |>
   filter(!is.na(posteam) & !is.na(yards_gained)) |>
@@ -108,7 +106,7 @@ df |>
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-```{r, fold_code = T}
+```{r}
 game_results = df |>
   filter(season_type == "REG" & desc == "END GAME") |>
   select(home_team, away_team, total_home_score, total_away_score) |>
@@ -183,7 +181,7 @@ wl_df = wl_df |>
   mutate(win_prop = round(wins / (wins + losses + ties), 3))
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 df |>
   filter(season_type == "REG") |>
   filter(!is.na(posteam) & !is.na(yards_gained)) |>
@@ -202,7 +200,7 @@ df |>
   annotate("text", x = 105, y = 100, label = "i promise this is\ncooler with plotly")
 ```
 
-```{r, fold_code = T}
+```{r}
 team_ypg = df |>
   filter(season_type == "REG") |>
   filter(!is.na(posteam) & !is.na(yards_gained)) |>
@@ -236,7 +234,7 @@ wl_df |>
         legend.position = "none")
 ```
 
-```{r old_model, eval = F, include = F}
+```{r old_model, eval = F}
 xyz = game_results |>
   left_join(team_stats, by = c("home_team" = "posteam")) |>
   select(-season) |>
@@ -276,7 +274,7 @@ predict_winner("NYJ", "DET")
 predict_winner("CAR", "PIT")
 ```
 
-```{r, fold_code = T}
+```{r}
 # adding win_prop to team_stats
 team_stats = wl_df |>
   select(team, win_prop) |>
@@ -302,7 +300,7 @@ team_stats = df |>
   select(team, win_prop, off_ypg, def_ypg)
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 x = game_results |>
   left_join(team_stats, by = c("home_team" = "team")) |>
   rename(home_win_prop = win_prop,
@@ -382,7 +380,7 @@ pick_winner_return_team = function(home, away) {
 }
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 week15 = data.frame(home = c("SEA", "MIN", "CLE", "BUF", "CHI", "NYJ", "CAR", "HOU",
                     "NO", "JAX", "DEN", "LV", "LAC", "TB", "WAS", "GB"),
            away = c("SF", "IND", "BAL", "MIA", "PHI", "DET", "PIT", "KC",
@@ -393,7 +391,7 @@ week15 |>
          msg = pick_winner(home, away))
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 res = x |>
   mutate(pred_winner = pick_winner_return_team(home_team, away_team),
          correct = case_when(home_win == 0 & pred_winner == away_team ~ 1,
@@ -407,7 +405,7 @@ acc = round(res[2] / sum(res), 3)
 paste("current model accuracy:", acc)
 ```
 
-```{r, fold_code = T}
+```{r}
 new_gr = game_results |>
   left_join(wl_df, by = c("home_team" = "team")) |>
   rename(home_win_prop = win_prop) |>
@@ -419,7 +417,7 @@ new_gr = game_results |>
 head(new_gr) # use this to make the record above .500 column
 ```
 
-```{r, fold_code = T}
+```{r}
 margins_df = data.frame(team = all_teams, margin = NA)
 
 for (i in 1:nrow(margins_df)) {
@@ -463,13 +461,13 @@ wl_df |>
         legend.position = "none")
 ```
 
-```{r, fold_code = T}
+```{r}
 # updating team_stats with margins
 team_stats = team_stats |>
   left_join(margins_df, by = "team")
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 # updating model
 x = game_results |>
   left_join(team_stats, by = c("home_team" = "team")) |>
@@ -490,7 +488,7 @@ win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_marg
               data = x, family = "binomial")
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 pick_winner = function(home, away) {
   
   matchup = data.frame(home = home, away = away)
@@ -542,7 +540,7 @@ pick_winner_return_team = function(home, away) {
 }
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 week16 = data.frame(home = c("NYJ", "BAL", "CAR", "KC", "CLE", "TEN", "NE", "MIN", "CHI", "SF", "DAL", "PIT", "MIA", "LA", "ATL", "IND"),
            away = c("JAX", "ATL", "DET", "SEA", "NO", "HOU", "CIN", "NYG", "BUF", "WAS", "PHI", "LV", "GB", "DEN", "TB", "LAC"))
 
@@ -552,7 +550,7 @@ week16 |>
   pull(pred)
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 acc = game_results |>
   mutate(pred = pick_winner_return_team(home_team, away_team),
          winner = ifelse(win_team == "home", home_team, away_team),
@@ -564,7 +562,7 @@ acc = game_results |>
 paste("current model accuracy:", acc)
 ```
 
-```{r, fold_code = T}
+```{r}
 all_teams = sort(all_teams)
 
 df500 = data.frame(team = all_teams, wp500 = NA)
@@ -599,7 +597,7 @@ team_stats = team_stats |>
   left_join(df500, by = "team")
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 # updating model
 x = game_results |>
   left_join(team_stats, by = c("home_team" = "team")) |>
@@ -622,7 +620,7 @@ win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_marg
               data = x, family = "binomial") # current accuracy is higher without wp500 variables
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 pick_winner = function(home, away) {
   
   matchup = data.frame(home = home, away = away)
@@ -678,7 +676,7 @@ pick_winner_return_team = function(home, away) {
 }
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 acc = game_results |>
   filter(win_team != "tie") |>
   mutate(winner = ifelse(win_team == "home", home_team, away_team),
@@ -691,7 +689,7 @@ acc = game_results |>
 paste("current model accuracy:", acc)
 ```
 
-```{r, fold_code = T}
+```{r}
 # create home and away win percentages
 home_away_wp = data.frame(team = all_teams, home_wp = NA, away_wp = NA)
 for (i in 1:nrow(home_away_wp)) {
@@ -724,7 +722,7 @@ team_stats = team_stats |>
   left_join(home_away_wp, by = "team")
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 # updating model
 x = game_results |>
   left_join(team_stats, by = c("home_team" = "team")) |>
@@ -751,7 +749,7 @@ win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_marg
               data = x, family = "binomial") # current accuracy is higher without wp500 variables
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 pick_winner = function(home, away) {
   
   matchup = data.frame(home = home, away = away)
@@ -815,7 +813,7 @@ pick_winner_return_team = function(home, away) {
 }
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 acc = game_results |>
   mutate(winner = ifelse(win_team == "home", home_team, away_team),
          pred = pick_winner_return_team(home_team, away_team),
@@ -827,7 +825,7 @@ acc = game_results |>
 paste("current model accuracy:", acc)
 ```
 
-```{r eval = F, include = F}
+```{r eval = F}
 week16 = data.frame(home = c("NYJ", "BAL", "CAR", "KC", "CLE", "TEN", "NE", "MIN", "CHI", "SF", "DAL", "PIT", "MIA", "LA", "ATL", "IND"),
                     away = c("JAX", "ATL", "DET", "SEA", "NO", "HOU", "CIN", "NYG", "BUF", "WAS", "PHI", "LV", "GB", "DEN", "TB", "LAC"))
 
@@ -840,7 +838,7 @@ for (i in 1:length(preds)) {
 }
 ```
 
-```{r, fold_code = T}
+```{r}
 # add third and fourth down rates
 # and ytg on third down
 # penalties
@@ -925,7 +923,7 @@ df_3rd_down |>
     "#BB0000", "#DA0000", "#003472", "#690A00"))
 ```
 
-```{r, fold_code = T}
+```{r}
 off_conv4 = df |>
   filter(down == 4 & !play_type %in% c("no_play", "punt", "field_goal", "qb_kneel") & !is.na(play_type)) |>
   select(posteam, ydstogo, yards_gained) |>
@@ -990,7 +988,7 @@ df_4th_down |>
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-```{r, fold_code = T}
+```{r}
 df_3and4 = df_3rd_down |>
   left_join(df_4th_down, by = "team")
 
@@ -1000,7 +998,7 @@ team_stats = team_stats |>
 names(team_stats)
 ```
 
-```{r UPDATE MODEL, fold_code = T}
+```{r UPDATE MODEL}
 # updating model
 x = game_results |>
   left_join(team_stats, by = c("home_team" = "team")) |>
@@ -1029,7 +1027,7 @@ win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_marg
               data = x, family = "binomial") # current accuracy is higher without wp500 variables
 ```
 
-```{r UPDATE PICK WINNER, fold_code = T}
+```{r UPDATE PICK WINNER}
 pick_winner = function(home, away) {
   
   matchup = data.frame(home = home, away = away)
@@ -1089,7 +1087,7 @@ pick_winner_return_team = function(home, away) {
 }
 ```
 
-```{r, fold_code = T}
+```{r}
 acc = game_results |>
   filter(win_team != "tie") |>
   mutate(winner = ifelse(win_team == "home", home_team, away_team),
@@ -1101,7 +1099,7 @@ acc = game_results |>
 paste0("current model accuracy: ", acc, "%")
 ```
 
-```{r, fold_code = T}
+```{r}
 df |>
   select(game_id, home_team, away_team) |>
   right_join(game_results, by = c("home_team", "away_team")) |>
@@ -1124,7 +1122,7 @@ df |>
         plot.subtitle = element_text(hjust = 0.5, size = 9))
 ```
 
-```{r, fold_code = T}
+```{r}
 week16 = data.frame(home = c("NYJ", "BAL", "CAR", "KC", "CLE", "TEN", "NE", "MIN", "CHI", "SF", "DAL", "PIT", "MIA", "LA", "ATL", "IND"),
                     away = c("JAX", "ATL", "DET", "SEA", "NO", "HOU", "CIN", "NYG", "BUF", "WAS", "PHI", "LV", "GB", "DEN", "TB", "LAC"))
 
