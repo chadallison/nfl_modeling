@@ -8,6 +8,7 @@ predictive model for nfl games (work in progress)
 
 ------------------------------------------------------------------------
 
+<!-- code folding -->
 <!-- knitr::knit_hooks$set(source = function(x, options) { -->
 <!--   hook.r = function(x, options) { -->
 <!--     fence <- "```" -->
@@ -33,6 +34,13 @@ library(nflreadr)
 knitr::opts_chunk$set(message = F, warning = F)
 options(nflreadr.verbose = F)
 theme_set(theme_classic())
+
+add_team_fills = scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00"))
 ```
 
 ``` r
@@ -998,14 +1006,9 @@ df_4th_down |>
   ggplot(aes(reorder(team, off_conv4), off_conv4)) +
   geom_col(aes(fill = team)) +
   coord_flip() +
-  scale_fill_manual(values = c(
-    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
-    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
-    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
-    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
-    "#BB0000", "#DA0000", "#003472", "#690A00")) +
-      labs(x = NULL, y = "conversion rate", fill = NULL,
-           title = "fourth down offensive conversion rates") +
+  add_team_fills +
+  labs(x = NULL, y = "conversion rate", fill = NULL,
+       title = "fourth down offensive conversion rates") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -1016,14 +1019,9 @@ df_4th_down |>
   ggplot(aes(reorder(team, -def_conv4), def_conv4)) +
   geom_col(aes(fill = team)) +
   coord_flip() +
-  scale_fill_manual(values = c(
-    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
-    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
-    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
-    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
-    "#BB0000", "#DA0000", "#003472", "#690A00")) +
-      labs(x = NULL, y = "conversion rate", fill = NULL,
-           title = "fourth down defensive conversion rates") +
+  add_team_fills +
+  labs(x = NULL, y = "conversion rate", fill = NULL,
+       title = "fourth down defensive conversion rates") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -1035,14 +1033,9 @@ df_4th_down |>
   ggplot(aes(reorder(team, conv), conv)) +
   geom_col(aes(fill = team)) +
   coord_flip() +
-  scale_fill_manual(values = c(
-    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
-    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
-    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
-    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
-    "#BB0000", "#DA0000", "#003472", "#690A00")) +
-      labs(x = NULL, y = "difference in conversion rates", fill = NULL,
-           title = "difference in offensive and defensive fourth down conversion rates") +
+  add_team_fills +
+  labs(x = NULL, y = "difference in conversion rates", fill = NULL,
+       title = "difference in offensive and defensive fourth down conversion rates") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -1063,6 +1056,111 @@ names(team_stats)
     ## [13] "off_conv4" "def_conv4"
 
 ``` r
+team_pen_yds = df |>
+  filter(!is.na(penalty_team)) |>
+  group_by(penalty_team, game_id) |>
+  summarise(yds = sum(penalty_yards),
+            .groups = "drop") |>
+  group_by(penalty_team) |>
+  summarise(pen_yds = round(mean(yds), 3)) |>
+  rename(team = penalty_team)
+
+# adding penalty yards to team stats
+team_stats = team_stats |>
+  left_join(team_pen_yds, by = "team")
+
+team_stats |>
+  select(team, pen_yds) |>
+  sample_n(6)
+```
+
+    ## # A tibble: 6 × 2
+    ##   team  pen_yds
+    ##   <chr>   <dbl>
+    ## 1 CLE      52.5
+    ## 2 TB       48.7
+    ## 3 NE       50  
+    ## 4 LV       58.3
+    ## 5 MIN      42.8
+    ## 6 SEA      55.3
+
+``` r
+games_played = df |>
+  filter(desc == "END GAME") |>
+  count(home_team) |>
+  left_join((df |> filter(desc == "END GAME") |> count(away_team)), by = c("home_team" = "away_team")) |>
+  transmute(team = home_team,
+            n = n.x + n.y)
+
+df_ppg = data.frame(team = all_teams, off_ppg = NA, def_ppg = NA)
+
+for (i in 1:nrow(df_ppg)) {
+
+  # need points per game and points allowed per game
+  home_pf = df |>
+    filter(home_team == df_ppg$team[i] & desc == "END GAME") |>
+    summarise(pts = sum(total_home_score)) |>
+    pull(pts)
+  
+  away_pf = df |>
+    filter(away_team == df_ppg$team[i] & desc == "END GAME") |>
+    summarise(pts = sum(total_away_score)) |>
+    pull(pts)
+  
+  home_pa = df |>
+    filter(home_team == df_ppg$team[i] & desc == "END GAME") |>
+    summarise(pts = sum(total_away_score)) |>
+    pull(pts)
+  
+  away_pa = df |>
+    filter(away_team == df_ppg$team[i] & desc == "END GAME") |>
+    summarise(pts = sum(total_home_score)) |>
+    pull(pts)
+  
+  team_pf = home_pf + away_pf
+  team_pa = home_pa + away_pa
+  off_ppg = round(team_pf / games_played$n[which(games_played$team == df_ppg$team[i])], 3)
+  def_ppg = round(team_pa / games_played$n[which(games_played$team == df_ppg$team[i])], 3)
+  
+  df_ppg$off_ppg[i] = off_ppg
+  df_ppg$def_ppg[i] = def_ppg
+
+}
+
+df_ppg |>
+  mutate(ppg_diff = off_ppg - def_ppg) |>
+  ggplot(aes(reorder(team, ppg_diff), ppg_diff)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  labs(x = NULL, y = "offensive ppg - defensive ppg", fill = NULL,
+       title = "offensive and defensive ppg differentials") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  add_team_fills
+```
+
+![](nfl_model_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
+
+``` r
+# adding off_ppg and def_ppg to team_stats
+team_stats = team_stats |>
+  left_join(df_ppg, by = "team")
+
+team_stats |>
+  select(team, off_ppg, def_ppg) |>
+  sample_n(6)
+```
+
+    ## # A tibble: 6 × 3
+    ##   team  off_ppg def_ppg
+    ##   <chr>   <dbl>   <dbl>
+    ## 1 NE       21.4    19.2
+    ## 2 ATL      21.9    23.8
+    ## 3 CLE      22.4    23.3
+    ## 4 NYG      20.5    22.3
+    ## 5 CAR      19.7    22.4
+    ## 6 SF       24.1    15
+
+``` r
 # updating model
 x = game_results |>
   left_join(team_stats, by = c("home_team" = "team")) |>
@@ -1070,25 +1168,27 @@ x = game_results |>
          home_margin = margin, home_wp500 = wp500, home_home_wp = home_wp,
          home_off_ytg3 = off_ytg3, home_off_conv3 = off_conv3,
          home_def_ytg3 = def_ytg3, home_def_conv3 = def_conv3,
-         home_off_conv4 = off_conv4, home_def_conv4 = def_conv4) |>
+         home_off_conv4 = off_conv4, home_def_conv4 = def_conv4,
+         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg) |>
   select(-away_wp) |>
   left_join(team_stats, by = c("away_team" = "team")) |>
   rename(away_win_prop = win_prop, away_off_ypg = off_ypg, away_def_ypg = def_ypg,
          away_margin = margin, away_wp500 = wp500, away_away_wp = away_wp,
          away_off_ytg3 = off_ytg3, away_off_conv3 = off_conv3,
          away_def_ytg3 = def_ytg3, away_def_conv3 = def_conv3,
-         away_off_conv4 = off_conv4, away_def_conv4 = def_conv4) |>
+         away_off_conv4 = off_conv4, away_def_conv4 = def_conv4,
+         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg) |>
   select(-home_wp) |>
   filter(win_team != "tie") |>
   mutate(home_win = ifelse(win_team == "home", 1, 0))
 
 win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_margin + home_wp500 + home_home_wp +
                          home_off_ytg3 + home_off_conv3 + home_def_ytg3 + home_def_conv3 +
-                         home_off_conv4 + home_def_conv4 +
+                         home_off_conv4 + home_def_conv4 + home_pen_ypg + home_off_ppg + home_def_ppg +
                          away_win_prop + away_off_ypg + away_def_ypg + away_margin + away_wp500 + away_away_wp +
                          away_off_ytg3 + away_off_conv3 + away_def_ytg3 + away_def_conv3 +
-                         away_off_conv4 + away_def_conv4,
-              data = x, family = "binomial") # current accuracy is higher without wp500 variables
+                         away_off_conv4 + away_def_conv4 + away_pen_ypg + away_off_ppg + away_def_ppg,
+              data = x, family = "binomial")
 ```
 
 ``` r
@@ -1102,14 +1202,16 @@ pick_winner = function(home, away) {
          home_margin = margin, home_wp500 = wp500, home_home_wp = home_wp,
          home_off_ytg3 = off_ytg3, home_off_conv3 = off_conv3,
          home_def_ytg3 = def_ytg3, home_def_conv3 = def_conv3,
-         home_off_conv4 = off_conv4, home_def_conv4 = def_conv4) |>
+         home_off_conv4 = off_conv4, home_def_conv4 = def_conv4,
+         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg) |>
     select(-away_wp) |>
     left_join(team_stats, by = c("away" = "team")) |>
     rename(away_win_prop = win_prop, away_off_ypg = off_ypg, away_def_ypg = def_ypg,
          away_margin = margin, away_wp500 = wp500, away_away_wp = away_wp,
          away_off_ytg3 = off_ytg3, away_off_conv3 = off_conv3,
          away_def_ytg3 = def_ytg3, away_def_conv3 = def_conv3,
-         away_off_conv4 = off_conv4, away_def_conv4 = def_conv4) |>
+         away_off_conv4 = off_conv4, away_def_conv4 = def_conv4,
+         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg) |>
     select(-home_wp)
   
   prob = predict(win_mod, matchup, type = "response")
@@ -1131,14 +1233,16 @@ pick_winner_return_team = function(home, away) {
          home_margin = margin, home_wp500 = wp500, home_home_wp = home_wp,
          home_off_ytg3 = off_ytg3, home_off_conv3 = off_conv3,
          home_def_ytg3 = def_ytg3, home_def_conv3 = def_conv3,
-         home_off_conv4 = off_conv4, home_def_conv4 = def_conv4) |>
+         home_off_conv4 = off_conv4, home_def_conv4 = def_conv4,
+         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg) |>
     select(-away_wp) |>
     left_join(team_stats, by = c("away" = "team")) |>
     rename(away_win_prop = win_prop, away_off_ypg = off_ypg, away_def_ypg = def_ypg,
          away_margin = margin, away_wp500 = wp500, away_away_wp = away_wp,
          away_off_ytg3 = off_ytg3, away_off_conv3 = off_conv3,
          away_def_ytg3 = def_ytg3, away_def_conv3 = def_conv3,
-         away_off_conv4 = off_conv4, away_def_conv4 = def_conv4) |>
+         away_off_conv4 = off_conv4, away_def_conv4 = def_conv4,
+         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg) |>
     select(-home_wp)
   
   prob = predict(win_mod, matchup, type = "response")
@@ -1163,7 +1267,7 @@ acc = game_results |>
 paste0("current model accuracy: ", acc, "%")
 ```
 
-    ## [1] "current model accuracy: 77.93%"
+    ## [1] "current model accuracy: 74.77%"
 
 ``` r
 df |>
@@ -1188,7 +1292,7 @@ df |>
         plot.subtitle = element_text(hjust = 0.5, size = 9))
 ```
 
-![](nfl_model_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
+![](nfl_model_files/figure-gfm/PREDICTIONS%20PLOT-1.png)<!-- -->
 
 ``` r
 week16 = data.frame(home = c("NYJ", "BAL", "CAR", "KC", "CLE", "TEN", "NE", "MIN", "CHI", "SF", "DAL", "PIT", "MIA", "LA", "ATL", "IND"),
@@ -1203,22 +1307,22 @@ for (i in 1:length(preds)) {
 }
 ```
 
-    ## [1] "NYJ will win v. JAX (0.691)"
-    ## [1] "BAL will win v. ATL (0.944)"
-    ## [1] "DET will win @ CAR (0.693)"
-    ## [1] "KC will win v. SEA (0.859)"
-    ## [1] "CLE will win v. NO (0.93)"
-    ## [1] "TEN will win v. HOU (0.861)"
-    ## [1] "CIN will win @ NE (0.707)"
-    ## [1] "MIN will win v. NYG (0.642)"
-    ## [1] "BUF will win @ CHI (0.944)"
-    ## [1] "SF will win v. WAS (0.727)"
-    ## [1] "PHI will win @ DAL (0.675)"
-    ## [1] "PIT will win v. LV (0.563)"
-    ## [1] "MIA will win v. GB (0.944)"
-    ## [1] "LA will win v. DEN (0.673)"
-    ## [1] "ATL will win v. TB (0.631)"
-    ## [1] "LAC will win @ IND (0.901)"
+    ## [1] "NYJ will win v. JAX (0.674)"
+    ## [1] "BAL will win v. ATL (0.95)"
+    ## [1] "DET will win @ CAR (0.71)"
+    ## [1] "KC will win v. SEA (0.856)"
+    ## [1] "CLE will win v. NO (0.937)"
+    ## [1] "TEN will win v. HOU (0.814)"
+    ## [1] "CIN will win @ NE (0.708)"
+    ## [1] "MIN will win v. NYG (0.633)"
+    ## [1] "BUF will win @ CHI (0.955)"
+    ## [1] "SF will win v. WAS (0.659)"
+    ## [1] "PHI will win @ DAL (0.621)"
+    ## [1] "PIT will win v. LV (0.547)"
+    ## [1] "MIA will win v. GB (0.959)"
+    ## [1] "LA will win v. DEN (0.728)"
+    ## [1] "ATL will win v. TB (0.609)"
+    ## [1] "LAC will win @ IND (0.909)"
 
 **at this point in time these are the model predictors**
 
@@ -1234,6 +1338,9 @@ for (i in 1:length(preds)) {
 - home team defensive third down conversion rate
 - home team offensive fourth down conversion rate
 - home team defensive fourth down conversion rate
+- home team penalty yards per game
+- home team offensive points per game
+- home team defensive points per game
 - away team win percentage
 - away team offensive ypg
 - away team defensive ypg
@@ -1246,3 +1353,76 @@ for (i in 1:length(preds)) {
 - away team defensive third down conversion rate
 - away team offensive fourth down conversion rate
 - away team defensive fourth down conversion rate
+- away team penalty yards per game
+- away team offensive points per game
+- away team defensive points per game
+
+``` r
+off_pass_ypg = df |>
+  filter(play_type == "pass") |>
+  group_by(posteam) |>
+  summarise(yds = sum(yards_gained)) |>
+  rename(team = posteam) |>
+  left_join(games_played, by = "team") |>
+  mutate(pass_ypg = round(yds / n, 3)) |>
+  select(team, pass_ypg)
+
+off_rush_ypg = df |>
+  filter(play_type == "run") |>
+  group_by(posteam) |>
+  summarise(yds = sum(yards_gained)) |>
+  rename(team = posteam) |>
+  left_join(games_played, by = "team") |>
+  mutate(rush_ypg = round(yds / n, 3)) |>
+  select(team, rush_ypg)
+
+def_pass_ypg = df |>
+  filter(play_type == "pass") |>
+  group_by(defteam) |>
+  summarise(yds = sum(yards_gained)) |>
+  rename(team = defteam) |>
+  left_join(games_played, by = "team") |>
+  mutate(pass_ypg = round(yds / n, 3)) |>
+  select(team, pass_ypg)
+
+def_rush_ypg = df |>
+  filter(play_type == "run") |>
+  group_by(defteam) |>
+  summarise(yds = sum(yards_gained)) |>
+  rename(team = defteam) |>
+  left_join(games_played, by = "team") |>
+  mutate(rush_ypg = round(yds / n, 3)) |>
+  select(team, rush_ypg)
+
+pass_rush_ypg = off_pass_ypg |>
+  left_join(off_rush_ypg, by = "team") |>
+  rename(off_pass_ypg = pass_ypg,
+         off_rush_ypg = rush_ypg) |>
+  left_join(def_pass_ypg, by = "team") |>
+  left_join(def_rush_ypg, by = "team") |>
+  rename(def_pass_ypg = pass_ypg,
+         def_rush_ypg = rush_ypg)
+
+rm(off_pass_ypg, off_rush_ypg, def_pass_ypg, def_rush_ypg)
+
+fig = pass_rush_ypg |>
+  transmute(team,
+            pass_diff = off_pass_ypg - def_pass_ypg,
+            rush_diff = off_rush_ypg - def_rush_ypg) |>
+  pivot_longer(!team) |>
+  ggplot(aes(team, value)) +
+  geom_col(aes(fill = name), position = "dodge") +
+  coord_flip() +
+  scale_fill_manual(values = c("springgreen4", "lightsteelblue3"))
+
+for (i in 1.5:31.5) { fig = fig + geom_vline(xintercept = i, alpha = 0.25) }
+
+fig +
+  labs(x = NULL, title = "this is kinda confusing so just ignore for now") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+![](nfl_model_files/figure-gfm/unnamed-chunk-36-1.png)<!-- -->
+
+**consider passing and rushing stats** **consider 2nd half / 4th quarter
+performance**
