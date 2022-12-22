@@ -6,7 +6,7 @@ output: github_document
 
 predictive model for nfl games (work in progress)
 
-*current model accuracy: 77.93%*
+*current model accuracy: 75.23% (pre-feature selection methods)*
 
 ___
 
@@ -1074,6 +1074,68 @@ team_stats |>
   sample_n(6)
 ```
 
+```{r}
+off_pass_ypg = df |>
+  filter(play_type == "pass") |>
+  group_by(posteam) |>
+  summarise(yds = sum(yards_gained)) |>
+  rename(team = posteam) |>
+  left_join(games_played, by = "team") |>
+  mutate(pass_ypg = round(yds / n, 3)) |>
+  select(team, pass_ypg)
+
+off_rush_ypg = df |>
+  filter(play_type == "run") |>
+  group_by(posteam) |>
+  summarise(yds = sum(yards_gained)) |>
+  rename(team = posteam) |>
+  left_join(games_played, by = "team") |>
+  mutate(rush_ypg = round(yds / n, 3)) |>
+  select(team, rush_ypg)
+
+def_pass_ypg = df |>
+  filter(play_type == "pass") |>
+  group_by(defteam) |>
+  summarise(yds = sum(yards_gained)) |>
+  rename(team = defteam) |>
+  left_join(games_played, by = "team") |>
+  mutate(pass_ypg = round(yds / n, 3)) |>
+  select(team, pass_ypg)
+
+def_rush_ypg = df |>
+  filter(play_type == "run") |>
+  group_by(defteam) |>
+  summarise(yds = sum(yards_gained)) |>
+  rename(team = defteam) |>
+  left_join(games_played, by = "team") |>
+  mutate(rush_ypg = round(yds / n, 3)) |>
+  select(team, rush_ypg)
+
+pass_rush_ypg = off_pass_ypg |>
+  left_join(off_rush_ypg, by = "team") |>
+  rename(off_pass_ypg = pass_ypg,
+         off_rush_ypg = rush_ypg) |>
+  left_join(def_pass_ypg, by = "team") |>
+  left_join(def_rush_ypg, by = "team") |>
+  rename(def_pass_ypg = pass_ypg,
+         def_rush_ypg = rush_ypg)
+
+rm(off_pass_ypg, off_rush_ypg, def_pass_ypg, def_rush_ypg)
+
+pass_rush_ypg |>
+  sample_n(6)
+```
+
+```{r}
+# adding pass_rush_ypg to team_stats
+team_stats = team_stats |>
+  left_join(pass_rush_ypg, by = "team")
+
+team_stats |>
+  select(1, 18:21) |>
+  sample_n(6)
+```
+
 ```{r UPDATE MODEL}
 # updating model
 x = game_results |>
@@ -1083,7 +1145,9 @@ x = game_results |>
          home_off_ytg3 = off_ytg3, home_off_conv3 = off_conv3,
          home_def_ytg3 = def_ytg3, home_def_conv3 = def_conv3,
          home_off_conv4 = off_conv4, home_def_conv4 = def_conv4,
-         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg) |>
+         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg,
+         home_off_pypg = off_pass_ypg, home_off_rypg = off_rush_ypg,
+         home_def_pypg = def_pass_ypg, home_def_rypg = def_rush_ypg) |>
   select(-away_wp) |>
   left_join(team_stats, by = c("away_team" = "team")) |>
   rename(away_win_prop = win_prop, away_off_ypg = off_ypg, away_def_ypg = def_ypg,
@@ -1091,7 +1155,9 @@ x = game_results |>
          away_off_ytg3 = off_ytg3, away_off_conv3 = off_conv3,
          away_def_ytg3 = def_ytg3, away_def_conv3 = def_conv3,
          away_off_conv4 = off_conv4, away_def_conv4 = def_conv4,
-         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg) |>
+         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg,
+         away_off_pypg = off_pass_ypg, away_off_rypg = off_rush_ypg,
+         away_def_pypg = def_pass_ypg, away_def_rypg = def_rush_ypg) |>
   select(-home_wp) |>
   filter(win_team != "tie") |>
   mutate(home_win = ifelse(win_team == "home", 1, 0))
@@ -1099,9 +1165,11 @@ x = game_results |>
 win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_margin + home_wp500 + home_home_wp +
                          home_off_ytg3 + home_off_conv3 + home_def_ytg3 + home_def_conv3 +
                          home_off_conv4 + home_def_conv4 + home_pen_ypg + home_off_ppg + home_def_ppg +
+                         home_off_pypg + home_off_rypg + home_def_pypg + home_def_rypg +
                          away_win_prop + away_off_ypg + away_def_ypg + away_margin + away_wp500 + away_away_wp +
                          away_off_ytg3 + away_off_conv3 + away_def_ytg3 + away_def_conv3 +
-                         away_off_conv4 + away_def_conv4 + away_pen_ypg + away_off_ppg + away_def_ppg,
+                         away_off_conv4 + away_def_conv4 + away_pen_ypg + away_off_ppg + away_def_ppg +
+                         away_off_pypg + away_off_rypg + away_def_pypg + away_def_rypg,
               data = x, family = "binomial")
 ```
 
@@ -1117,7 +1185,9 @@ pick_winner = function(home, away) {
          home_off_ytg3 = off_ytg3, home_off_conv3 = off_conv3,
          home_def_ytg3 = def_ytg3, home_def_conv3 = def_conv3,
          home_off_conv4 = off_conv4, home_def_conv4 = def_conv4,
-         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg) |>
+         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg,
+         home_off_pypg = off_pass_ypg, home_off_rypg = off_rush_ypg,
+         home_def_pypg = def_pass_ypg, home_def_rypg = def_rush_ypg) |>
     select(-away_wp) |>
     left_join(team_stats, by = c("away" = "team")) |>
     rename(away_win_prop = win_prop, away_off_ypg = off_ypg, away_def_ypg = def_ypg,
@@ -1125,7 +1195,9 @@ pick_winner = function(home, away) {
          away_off_ytg3 = off_ytg3, away_off_conv3 = off_conv3,
          away_def_ytg3 = def_ytg3, away_def_conv3 = def_conv3,
          away_off_conv4 = off_conv4, away_def_conv4 = def_conv4,
-         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg) |>
+         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg,
+         away_off_pypg = off_pass_ypg, away_off_rypg = off_rush_ypg,
+         away_def_pypg = def_pass_ypg, away_def_rypg = def_rush_ypg) |>
     select(-home_wp)
   
   prob = predict(win_mod, matchup, type = "response")
@@ -1148,7 +1220,9 @@ pick_winner_return_team = function(home, away) {
          home_off_ytg3 = off_ytg3, home_off_conv3 = off_conv3,
          home_def_ytg3 = def_ytg3, home_def_conv3 = def_conv3,
          home_off_conv4 = off_conv4, home_def_conv4 = def_conv4,
-         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg) |>
+         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg,
+         home_off_pypg = off_pass_ypg, home_off_rypg = off_rush_ypg,
+         home_def_pypg = def_pass_ypg, home_def_rypg = def_rush_ypg) |>
     select(-away_wp) |>
     left_join(team_stats, by = c("away" = "team")) |>
     rename(away_win_prop = win_prop, away_off_ypg = off_ypg, away_def_ypg = def_ypg,
@@ -1156,7 +1230,9 @@ pick_winner_return_team = function(home, away) {
          away_off_ytg3 = off_ytg3, away_off_conv3 = off_conv3,
          away_def_ytg3 = def_ytg3, away_def_conv3 = def_conv3,
          away_off_conv4 = off_conv4, away_def_conv4 = def_conv4,
-         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg) |>
+         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg,
+         away_off_pypg = off_pass_ypg, away_off_rypg = off_rush_ypg,
+         away_def_pypg = def_pass_ypg, away_def_rypg = def_rush_ypg) |>
     select(-home_wp)
   
   prob = predict(win_mod, matchup, type = "response")
@@ -1234,6 +1310,10 @@ for (i in 1:length(preds)) {
 - home team penalty yards per game
 - home team offensive points per game
 - home team defensive points per game
+- home team offensive pass yards per game
+- home team offensive rush yards per game
+- home team defensive pass yards per game
+- home team defensive rush yards per game
 - away team win percentage
 - away team offensive ypg
 - away team defensive ypg
@@ -1249,80 +1329,19 @@ for (i in 1:length(preds)) {
 - away team penalty yards per game
 - away team offensive points per game
 - away team defensive points per game
-
-```{r}
-off_pass_ypg = df |>
-  filter(play_type == "pass") |>
-  group_by(posteam) |>
-  summarise(yds = sum(yards_gained)) |>
-  rename(team = posteam) |>
-  left_join(games_played, by = "team") |>
-  mutate(pass_ypg = round(yds / n, 3)) |>
-  select(team, pass_ypg)
-
-off_rush_ypg = df |>
-  filter(play_type == "run") |>
-  group_by(posteam) |>
-  summarise(yds = sum(yards_gained)) |>
-  rename(team = posteam) |>
-  left_join(games_played, by = "team") |>
-  mutate(rush_ypg = round(yds / n, 3)) |>
-  select(team, rush_ypg)
-
-def_pass_ypg = df |>
-  filter(play_type == "pass") |>
-  group_by(defteam) |>
-  summarise(yds = sum(yards_gained)) |>
-  rename(team = defteam) |>
-  left_join(games_played, by = "team") |>
-  mutate(pass_ypg = round(yds / n, 3)) |>
-  select(team, pass_ypg)
-
-def_rush_ypg = df |>
-  filter(play_type == "run") |>
-  group_by(defteam) |>
-  summarise(yds = sum(yards_gained)) |>
-  rename(team = defteam) |>
-  left_join(games_played, by = "team") |>
-  mutate(rush_ypg = round(yds / n, 3)) |>
-  select(team, rush_ypg)
-
-pass_rush_ypg = off_pass_ypg |>
-  left_join(off_rush_ypg, by = "team") |>
-  rename(off_pass_ypg = pass_ypg,
-         off_rush_ypg = rush_ypg) |>
-  left_join(def_pass_ypg, by = "team") |>
-  left_join(def_rush_ypg, by = "team") |>
-  rename(def_pass_ypg = pass_ypg,
-         def_rush_ypg = rush_ypg)
-
-rm(off_pass_ypg, off_rush_ypg, def_pass_ypg, def_rush_ypg)
-
-fig = pass_rush_ypg |>
-  transmute(team,
-            pass_diff = off_pass_ypg - def_pass_ypg,
-            rush_diff = off_rush_ypg - def_rush_ypg) |>
-  pivot_longer(!team) |>
-  ggplot(aes(team, value)) +
-  geom_col(aes(fill = name), position = "dodge") +
-  coord_flip() +
-  scale_fill_manual(values = c("springgreen4", "lightsteelblue3"))
-
-for (i in 1.5:31.5) { fig = fig + geom_vline(xintercept = i, alpha = 0.25) }
-
-fig +
-  labs(x = NULL, title = "this is kinda confusing so just ignore for now") +
-  theme(plot.title = element_text(hjust = 0.5))
-```
-
-
-
-
+- away team offensive pass yards per game
+- away team offensive rush yards per game
+- away team defensive pass yards per game
+- away team defensive rush yards per game
 
 
 
 **consider passing and rushing stats**
 **consider 2nd half / 4th quarter performance**
+
+
+
+
 
 
 
