@@ -6,7 +6,7 @@ output: github_document
 
 predictive model for nfl games (work in progress)
 
-*current model accuracy: 75.23% (pre-feature selection methods)*
+*current model accuracy: 75.63% (pre-feature selection methods)*
 
 ___
 
@@ -1171,6 +1171,17 @@ win_mod = glm(home_win ~ home_win_prop + home_off_ypg + home_def_ypg + home_marg
                          away_off_conv4 + away_def_conv4 + away_pen_ypg + away_off_ppg + away_def_ppg +
                          away_off_pypg + away_off_rypg + away_def_pypg + away_def_rypg,
               data = x, family = "binomial")
+
+# this one removes all the win percentage stuff
+# win_mod = glm(home_win ~ home_off_ypg + home_def_ypg + home_margin +
+#                          home_off_ytg3 + home_off_conv3 + home_def_ytg3 + home_def_conv3 +
+#                          home_off_conv4 + home_def_conv4 + home_pen_ypg + home_off_ppg + home_def_ppg +
+#                          home_off_pypg + home_off_rypg + home_def_pypg + home_def_rypg +
+#                          away_off_ypg + away_def_ypg + away_margin +
+#                          away_off_ytg3 + away_off_conv3 + away_def_ytg3 + away_def_conv3 +
+#                          away_off_conv4 + away_def_conv4 + away_pen_ypg + away_off_ppg + away_def_ppg +
+#                          away_off_pypg + away_off_rypg + away_def_pypg + away_def_rypg,
+#               data = x, family = "binomial")
 ```
 
 ```{r UPDATE PICK WINNER}
@@ -1280,11 +1291,13 @@ df |>
         plot.subtitle = element_text(hjust = 0.5, size = 9))
 ```
 
-```{r WEEK 16 PREDICTIONS}
-week16 = data.frame(home = c("NYJ", "BAL", "CAR", "KC", "CLE", "TEN", "NE", "MIN", "CHI", "SF", "DAL", "PIT", "MIA", "LA", "ATL", "IND"),
-                    away = c("JAX", "ATL", "DET", "SEA", "NO", "HOU", "CIN", "NYG", "BUF", "WAS", "PHI", "LV", "GB", "DEN", "TB", "LAC"))
+```{r WEEK 17 PREDICTIONS}
+week17 = data.frame(home = c("TEN", "ATL", "NE", "PHI", "NYG", "TB", "KC", "DET", "WAS",
+                             "HOU", "LV", "SEA", "GB", "LAC", "BAL", "CIN"),
+                    away = c("DAL", "ARI", "MIA", "NO", "IND", "CAR", "DEN", "CHI", "CLE",
+                             "JAX", "SF", "NYJ", "MIN", "LA", "PIT", "BUF"))
 
-preds = week16 |>
+preds = week17 |>
   mutate(pred = pick_winner(home, away)) |>
   pull(pred)
 
@@ -1360,8 +1373,162 @@ for (i in 1:length(preds)) {
 
 
 
+```{r}
+big_game_res = game_results |>
+  left_join(team_stats, by = c("home_team" = "team")) |>
+  rename(home_win_prop = win_prop, home_off_ypg = off_ypg, home_def_ypg = def_ypg,
+         home_margin = margin, home_wp500 = wp500, home_home_wp = home_wp,
+         home_off_ytg3 = off_ytg3, home_off_conv3 = off_conv3,
+         home_def_ytg3 = def_ytg3, home_def_conv3 = def_conv3,
+         home_off_conv4 = off_conv4, home_def_conv4 = def_conv4,
+         home_pen_ypg = pen_yds, home_off_ppg = off_ppg, home_def_ppg = def_ppg,
+         home_off_pypg = off_pass_ypg, home_off_rypg = off_rush_ypg,
+         home_def_pypg = def_pass_ypg, home_def_rypg = def_rush_ypg) |>
+  select(-away_wp) |>
+  left_join(team_stats, by = c("away_team" = "team")) |>
+  rename(away_win_prop = win_prop, away_off_ypg = off_ypg, away_def_ypg = def_ypg,
+         away_margin = margin, away_wp500 = wp500, away_away_wp = away_wp,
+         away_off_ytg3 = off_ytg3, away_off_conv3 = off_conv3,
+         away_def_ytg3 = def_ytg3, away_def_conv3 = def_conv3,
+         away_off_conv4 = off_conv4, away_def_conv4 = def_conv4,
+         away_pen_ypg = pen_yds, away_off_ppg = off_ppg, away_def_ppg = def_ppg,
+         away_off_pypg = off_pass_ypg, away_off_rypg = off_rush_ypg,
+         away_def_pypg = def_pass_ypg, away_def_rypg = def_rush_ypg) |>
+  select(-home_wp) |>
+  filter(win_team != "tie") |>
+  mutate(home_win = ifelse(win_team == "home", 1, 0))
 
+home_pts_df = big_game_res |>
+  group_by(home_team) |>
+  summarise(home_pts = sum(total_home_score),
+            away_def_ppg = sum(away_def_ppg))
 
+away_pts_df = big_game_res |>
+  group_by(away_team) |>
+  summarise(away_pts = sum(total_away_score),
+            home_def_ppg = sum(home_def_ppg))
+
+opda_df = left_join(home_pts_df, away_pts_df, by = c("home_team" = "away_team")) |>
+  transmute(team = home_team,
+            pts = home_pts + away_pts,
+            def_pts = away_def_ppg + home_def_ppg) |>
+  mutate(OPDA = round(pts / def_pts, 3))
+
+rm(home_pts_df, away_pts_df)
+
+opda_df |>
+  left_join(team_stats, by = "team") |>
+  ggplot(aes(OPDA, win_prop)) +
+  geom_point(aes(col = team)) +
+  geom_smooth(formula = y ~ x, method = "lm", se = F, col = "black") +
+  ggrepel::geom_text_repel(aes(x = OPDA,
+                      y = win_prop,
+                      label = team),
+                      size = 3) +
+  scale_color_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+      labs(x = "OPDA",
+           y = "win percentage",
+           title = "team win percentage by offensive points over defensive allowed (OPDA)") +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+```
+
+```{r}
+home_pts_df = big_game_res |>
+  group_by(home_team) |>
+  summarise(home_pa = sum(total_away_score),
+            away_off_ppg = sum(away_off_ppg))
+
+away_pts_df = big_game_res |>
+  group_by(away_team) |>
+  summarise(away_pa = sum(total_home_score),
+            home_off_ppg = sum(home_off_ppg))
+
+dpos_df = left_join(home_pts_df, away_pts_df, by = c("home_team" = "away_team")) |>
+  transmute(team = home_team,
+            pa = home_pa + away_pa,
+            avg_ppg = away_off_ppg + home_off_ppg,
+            DPOS = round(pa / avg_ppg, 3))
+
+rm(home_pts_df, away_pts_df)
+
+dpos_df |>
+  left_join(team_stats, by = "team") |>
+  ggplot(aes(DPOS, win_prop)) +
+  geom_point(aes(col = team)) +
+  geom_smooth(formula = y ~ x, method = "lm", se = F, col = "black") +
+  ggrepel::geom_text_repel(aes(x = DPOS,
+                      y = win_prop,
+                      label = team),
+                      size = 3) +
+  scale_color_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+      labs(x = "DPOS", y = "win percentage",
+           title = "win percentage by defensive points allowed under offensive scored") +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+```
+
+```{r}
+opda_df |>
+  select(team, OPDA) |>
+  left_join(dpos_df, by = "team") |>
+  select(team, OPDA, DPOS) |>
+  mutate(stat = round(OPDA / DPOS, 3)) |>
+  arrange(desc(stat)) |>
+  ggplot(aes(reorder(team, stat), stat)) +
+  geom_col(aes(fill = team)) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "#DD0000", "#B80000", "#6E3390", "#6D9BFF", "#79CAFF", "#000D5F", "#FF8A22",
+    "#FF7800", "#002AAF", "#FF9803", "#26A6FF", "#076C00", "#001F93", "#001DA0",
+    "#00B0B8", "#FF2121", "#0042FF", "#6CC5FF", "#838383", "#00CE61", "#AC34FF",
+    "#001371", "#D6B458", "#0800FF", "#045B00", "#0A7200", "#F7FF00", "#53D200",
+    "#BB0000", "#DA0000", "#003472", "#690A00")) +
+      labs(x = NULL, y = "OPDA / DPOS", title = "team OPDA / DPOS") +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+```
+
+```{r}
+stat_df = opda_df |>
+  select(team, OPDA) |>
+  left_join(dpos_df, by = "team") |>
+  select(team, OPDA, DPOS) |>
+  transmute(team, stat = round(OPDA / DPOS, 3))
+
+week18 = data.frame(home = c("LV", "JAX", "PIT", "CIN", "CHI", "BUF", "MIA", "ATL",
+                             "NO", "IND", "SF", "WAS", "SEA", "PHI", "DEN", "GB"),
+                    away = c("KC", "TEN", "CLE", "BAL", "MIN", "NE", "NYJ", "TB",
+                             "CAR", "HOU", "ARI", "DAL", "LA", "NYG", "LAC", "DET"))
+
+wk18_picks = week18 |>
+  left_join(stat_df, by = c("home" = "team")) |>
+  rename(home_stat = stat) |>
+  left_join(stat_df, by = c("away" = "team")) |>
+  rename(away_stat = stat) |>
+  mutate(winner = ifelse(home_stat >= away_stat, home, away)) |>
+  mutate(conf = ifelse(winner == home, home_stat - away_stat, away_stat - home_stat)) |>
+  arrange(desc(conf)) |>
+  select(home, away, winner, conf)
+
+for (i in 1:16) {
+  if (i == 1) print("these picks made entirely off of OPDA and DPOS")
+  winner = wk18_picks$winner[i]
+  loser = ifelse(wk18_picks$winner[i] == wk18_picks$home[i], wk18_picks$away[i], wk18_picks$home[i])
+  conf = round(wk18_picks$conf[i], 3)
+  print(paste0(winner, " over ", loser, " (", conf, ")"))
+}
+```
 
 
 
