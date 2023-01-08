@@ -1657,3 +1657,5 @@ for (i in 1:16) {
     ## [1] "TB over ATL (0.063)"
     ## [1] "MIA over NYJ (0.043)"
     ## [1] "IND over HOU (0.004)"
+    
+    ## [1] "CURRENT SCORE: 2/2 (100%)"
