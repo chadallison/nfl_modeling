@@ -1644,9 +1644,9 @@ for (i in 1:16) {
     ## [1] "SF over ARI (0.632)"
     ## [1] "DAL over WAS (0.525)"
     ## [1] "BUF over NE (0.488)"
-    ## [1] "KC over LV (0.381)"
+    ## [1] "KC over LV (0.381)" [TRUE]
     ## [1] "PHI over NYG (0.307)"
-    ## [1] "JAX over TEN (0.247)"
+    ## [1] "JAX over TEN (0.247)" [TRUE]
     ## [1] "LAC over DEN (0.23)"
     ## [1] "MIN over CHI (0.196)"
     ## [1] "SEA over LA (0.154)"
