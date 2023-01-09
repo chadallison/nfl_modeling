@@ -1641,21 +1641,21 @@ for (i in 1:16) {
 ```
 
     ## [1] "these picks made entirely off of OPDA and DPOS"
-    ## [1] "SF over ARI (0.632)"
-    ## [1] "DAL over WAS (0.525)"
-    ## [1] "BUF over NE (0.488)"
+    ## [1] "SF over ARI (0.632)" [TRUE]
+    ## [1] "DAL over WAS (0.525)" [FALSE]
+    ## [1] "BUF over NE (0.488)" [TRUE]
     ## [1] "KC over LV (0.381)" [TRUE]
-    ## [1] "PHI over NYG (0.307)"
+    ## [1] "PHI over NYG (0.307)" [TRUE]
     ## [1] "JAX over TEN (0.247)" [TRUE]
-    ## [1] "LAC over DEN (0.23)"
-    ## [1] "MIN over CHI (0.196)"
-    ## [1] "SEA over LA (0.154)"
-    ## [1] "CIN over BAL (0.124)"
-    ## [1] "CLE over PIT (0.115)"
-    ## [1] "DET over GB (0.075)"
-    ## [1] "NO over CAR (0.065)"
-    ## [1] "TB over ATL (0.063)"
-    ## [1] "MIA over NYJ (0.043)"
-    ## [1] "IND over HOU (0.004)"
+    ## [1] "LAC over DEN (0.23)" [FALSE]
+    ## [1] "MIN over CHI (0.196)" [TRUE]
+    ## [1] "SEA over LA (0.154)" [TRUE]
+    ## [1] "CIN over BAL (0.124)" [TRUE]
+    ## [1] "CLE over PIT (0.115)" [FALSE]
+    ## [1] "DET over GB (0.075)" [TRUE]
+    ## [1] "NO over CAR (0.065)" [FALSE]
+    ## [1] "TB over ATL (0.063)" [FALSE]
+    ## [1] "MIA over NYJ (0.043)" [TRUE]
+    ## [1] "IND over HOU (0.004)" [FALSE]
     
-    ## [1] "CURRENT SCORE: 2/2 (100%)"
+    ## [1] "SCORE: 10/16 (62.5%)"
